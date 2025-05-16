@@ -1,5 +1,6 @@
 use super::{
-    game::{Game, GameState},
+    actions::{GameAction, GameActionKind},
+    game::Game,
     types::GameContract,
 };
 
@@ -10,9 +11,40 @@ pub struct BiddingState {
     already_bid: [bool; 3],
 }
 
+impl Game<BiddingState> {
+    pub fn validate(&self, action: GameAction) -> bool {
+        match action.kind {
+            GameActionKind::Bid | GameActionKind::PassBid => {
+                debug_assert!(
+                    self.state.bidder_ind != action.player_ind,
+                    "Player should not be able to respond to his own bid"
+                );
+
+                debug_assert!(
+                    self.state.bid < GameContract::Sans,
+                    "If bid Sans is reached, state should have changed to ChoosingCards"
+                );
+
+                true
+            }
+            GameActionKind::ClaimNoBid => !self.state.already_bid[action.player_ind],
+            _ => false,
+        }
+    }
+}
+
 pub struct NoBidClaimState {
     claimed: [bool; 3],
     already_bid: [bool; 3],
+}
+
+impl Game<NoBidClaimState> {
+    pub fn validate(&self, action: GameAction) -> bool {
+        match action.kind {
+            GameActionKind::ClaimNoBid => !self.state.already_bid[action.player_ind],
+            _ => false,
+        }
+    }
 }
 
 pub struct NoBidChoiceState {
@@ -20,62 +52,10 @@ pub struct NoBidChoiceState {
     declarer_ind: usize,
 }
 
-pub struct BidAction {}
-pub struct PassBidAction {}
-
-impl BidAction {
-    pub fn validate(&self, player_ind: usize, game: &Game) -> bool {
-        bid_validate(player_ind, game)
-    }
-}
-
-impl PassBidAction {
-    pub fn validate(&self, player_ind: usize, game: &Game) -> bool {
-        bid_validate(player_ind, game)
-    }
-}
-
-fn bid_validate(player_ind: usize, game: &Game) -> bool {
-    match &game.state {
-        GameState::Bidding(bidding) => {
-            debug_assert!(
-                bidding.bidder_ind != player_ind,
-                "Player should not be able to respond to his own bid"
-            );
-
-            debug_assert!(
-                bidding.bid < GameContract::Sans,
-                "If bid Sans is reached, state should have changed to ChoosingCards"
-            );
-
-            true
-        }
-        GameState::Starting => true,
-        _ => false,
-    }
-}
-
-pub struct ClaimNoBidAction {}
-
-impl ClaimNoBidAction {
-    pub fn validate(&self, player_ind: usize, game: &Game) -> bool {
-        match &game.state {
-            GameState::Bidding(bidding) => !bidding.already_bid[player_ind],
-            GameState::NoBidPlayClaim(no_bid_claim) => !no_bid_claim.already_bid[player_ind],
-            GameState::Starting => true,
-            _ => false,
-        }
-    }
-}
-
-pub struct ChooseNoBidAction {
-    contract: GameContract,
-}
-
-impl ChooseNoBidAction {
-    pub fn validate(&self, game: &Game) -> bool {
-        match &game.state {
-            GameState::NoBidPlayChoice(no_bid_choice) => self.contract > no_bid_choice.contract,
+impl Game<NoBidChoiceState> {
+    pub fn validate(&self, action: GameAction) -> bool {
+        match action.kind {
+            GameActionKind::ChooseNoBidContract(contract) => contract > self.state.contract,
             _ => false,
         }
     }

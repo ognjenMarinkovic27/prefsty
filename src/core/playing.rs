@@ -4,6 +4,7 @@ use crate::core::{
 };
 
 use super::{
+    actions::{GameAction, GameActionKind},
     game::{Game, GameState},
     player,
 };
@@ -21,27 +22,19 @@ pub struct RoundState {
     suit: Option<CardSuit>,
 }
 
-pub struct PlayCardAction {}
-
-impl PlayCardAction {
-    pub fn validate(&self, player_ind: usize, game: &Game) -> bool {
-        match &game.state {
-            GameState::Playing(playing_state) => {
-                if Self::no_cards_played(playing_state) {
-                    return true;
-                }
-
-                false
-            }
+impl Game<PlayingState> {
+    pub fn validate(&self, action: GameAction) -> bool {
+        match action.kind {
+            GameActionKind::PlayCard(card) => false,
             _ => false,
         }
     }
 
-    fn no_cards_played(playing_state: &PlayingState) -> bool {
-        let is_no_cards = playing_state.round_state.suit.is_none();
+    fn no_cards_played(&self) -> bool {
+        let is_no_cards = self.state.round_state.suit.is_none();
 
         if is_no_cards {
-            for card in &playing_state.round_state.played_cards {
+            for card in &self.state.round_state.played_cards {
                 debug_assert!(
                     card.is_none(),
                     "No cards should be played if round state suit is none"
@@ -52,7 +45,7 @@ impl PlayCardAction {
         is_no_cards
     }
 
-    fn has_trump(player_ind: usize, hand: &[Card], trump: CardSuit) -> bool {
+    fn has_trump(hand: &[Card], trump: CardSuit) -> bool {
         let trump_card = hand.iter().find(|card| card.suit == trump);
 
         trump_card.is_some()
