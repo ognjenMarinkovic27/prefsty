@@ -1,6 +1,6 @@
-use super::card::Card;
+use super::types::Card;
 
 pub struct Player {
     id: String,
-    cards: Vec<Card>
+    cards: Vec<Card>,
 }

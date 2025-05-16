@@ -1,23 +1,32 @@
-use super::{player::Player, states::{bidding::BiddingState, playing::PlayingState}};
+use super::{
+    bidding::*,
+    choosing::*,
+    player::Player,
+    playing::*,
+    types::{Card, GameContract},
+};
+
+pub struct Room {
+    game: Game,
+    players: Vec<Player>,
+}
 
 pub struct Game {
-    state: GameState,
-    players: Vec<Player>,
+    pub state: GameState,
+    pub first: usize,
+    pub turn: usize,
+    pub hands: [Vec<Card>; 3],
 }
 
 pub enum GameState {
     Starting,
     Bidding(BiddingState),
-    ChoosingCards,
-    ChoosingContract,
-    Playing(PlayingState)
-}
-
-pub enum GameContract {
-    Spades,
-    Diamonds,
-    Hearts,
-    Clubs,
-    Betl,
-    Sans
+    NoBidPlayClaim(NoBidClaimState),
+    NoBidPlayChoice(NoBidChoiceState),
+    ChoosingCards(GameContract),
+    ChoosingContract(GameContract),
+    RespondingToContract(RespondingToContractState),
+    HelpOrContreToContract(RespondingToContractState),
+    ContreDeclared(ContreDeclaredState),
+    Playing(PlayingState),
 }

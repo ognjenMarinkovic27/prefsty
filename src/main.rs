@@ -1,5 +1,1 @@
-pub mod core;
-
-fn main() {
-    
-}
+fn main() {}
