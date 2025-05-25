@@ -1,10 +1,5 @@
 use super::{
-    actions::{self, GameAction, GameActionKind},
-    bidding::*,
-    choosing::*,
-    player::Player,
-    playing::*,
-    types::{Card, GameContract},
+    actions::GameAction, bidding::*, choosing::*, player::Player, playing::*, types::Card,
 };
 
 pub struct Room {
@@ -15,12 +10,7 @@ pub struct Room {
 impl Room {
     pub fn new() -> Self {
         Room {
-            game: GameState::Starting(Game {
-                state: StartingState {},
-                first: 0,
-                turn: 0,
-                hands: Default::default(),
-            }),
+            game: GameState::Bidding(Game::new(0, Default::default(), Default::default())),
             players: Vec::new(),
         }
     }
@@ -31,20 +21,34 @@ pub struct Game<S> {
     pub first: usize,
     pub turn: usize,
     pub hands: [Vec<Card>; 3],
+    pub score: [PlayerScore; 3],
 }
 
-impl<S> Game<S> {
-    pub fn validate_turn(&self, action: GameAction) -> bool {
+#[derive(Default)]
+pub struct PlayerScore {
+    bools: u32,
+    soups: [u32; 2],
+}
+
+impl<StateType> Game<StateType> {
+    pub fn validate_turn(&self, action: &GameAction) -> bool {
         self.is_player_turn(action.player_ind)
     }
 
     fn is_player_turn(&self, player_ind: usize) -> bool {
         return self.turn == player_ind;
     }
+
+    pub fn turn_inc(&self) -> usize {
+        (self.turn + 1) % 3
+    }
+
+    pub fn turn_dec(&self) -> usize {
+        (self.turn + 2) % 3
+    }
 }
 
 pub enum GameState {
-    Starting(Game<StartingState>),
     Bidding(Game<BiddingState>),
     NoBidPlayClaim(Game<NoBidClaimState>),
     NoBidPlayChoice(Game<NoBidChoiceState>),
@@ -57,29 +61,35 @@ pub enum GameState {
 }
 
 impl GameState {
-    pub fn validate(&self, action: GameAction) -> bool {
+    pub fn validate(&self, action: &GameAction) -> bool {
         match self {
-            GameState::Starting(game) => game.validate(action),
-            GameState::Bidding(game) => game.validate(action),
-            GameState::NoBidPlayClaim(game) => game.validate(action),
-            GameState::NoBidPlayChoice(game) => game.validate(action),
-            GameState::ChoosingCards(game) => game.validate(action),
-            GameState::ChoosingContract(game) => game.validate(action),
-            GameState::RespondingToContract(game) => game.validate(action),
-            GameState::HelpOrContreToContract(game) => game.validate(action),
-            GameState::ContreDeclared(game) => game.validate(action),
-            GameState::Playing(game) => game.validate(action),
+            Self::Bidding(game) => game.validate(action),
+            Self::NoBidPlayClaim(game) => game.validate(action),
+            Self::NoBidPlayChoice(game) => game.validate(action),
+            Self::ChoosingCards(game) => game.validate(action),
+            Self::ChoosingContract(game) => game.validate(action),
+            Self::RespondingToContract(game) => game.validate(action),
+            Self::HelpOrContreToContract(game) => game.validate(action),
+            Self::ContreDeclared(game) => game.validate(action),
+            Self::Playing(game) => game.validate(action),
+        }
+    }
+
+    pub fn apply(&self, action: &GameAction) -> GameState {
+        match self {
+            GameState::Bidding(game) => todo!(),
+            GameState::NoBidPlayClaim(game) => todo!(),
+            GameState::NoBidPlayChoice(game) => todo!(),
+            GameState::ChoosingCards(game) => todo!(),
+            GameState::ChoosingContract(game) => todo!(),
+            GameState::RespondingToContract(game) => todo!(),
+            GameState::HelpOrContreToContract(game) => todo!(),
+            GameState::ContreDeclared(game) => todo!(),
+            GameState::Playing(game) => todo!(),
         }
     }
 }
 
-pub struct StartingState;
-
-impl Game<StartingState> {
-    pub fn validate(&self, action: GameAction) -> bool {
-        match action.kind {
-            GameActionKind::Bid => true,
-            _ => false,
-        }
-    }
+pub enum GameError {
+    InvalidAction,
 }

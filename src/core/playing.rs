@@ -5,8 +5,7 @@ use crate::core::{
 
 use super::{
     actions::{GameAction, GameActionKind},
-    game::{Game, GameState},
-    player,
+    game::Game,
 };
 
 pub struct PlayingState {
@@ -23,11 +22,21 @@ pub struct RoundState {
 }
 
 impl Game<PlayingState> {
-    pub fn validate(&self, action: GameAction) -> bool {
-        match action.kind {
-            GameActionKind::PlayCard(card) => false,
+    pub fn validate(&self, action: &GameAction) -> bool {
+        match &action.kind {
+            GameActionKind::PlayCard(card) => self.validate_play_card(action.player_ind, card),
             _ => false,
         }
+    }
+
+    fn validate_play_card(&self, player_ind: usize, card: &Card) -> bool {
+        if self.no_cards_played() || self.is_round_suit(card) {
+            return true;
+        } else if self.has_trump(player_ind) {
+            return self.is_trump(card);
+        }
+
+        true
     }
 
     fn no_cards_played(&self) -> bool {
@@ -45,9 +54,31 @@ impl Game<PlayingState> {
         is_no_cards
     }
 
-    fn has_trump(hand: &[Card], trump: CardSuit) -> bool {
-        let trump_card = hand.iter().find(|card| card.suit == trump);
+    fn is_round_suit(&self, card: &Card) -> bool {
+        if let Some(suit) = self.state.round_state.suit.as_ref() {
+            *suit == card.suit
+        } else {
+            false
+        }
+    }
 
-        trump_card.is_some()
+    fn has_trump(&self, player_ind: usize) -> bool {
+        if let Some(trump_suit) = self.state.trump.as_ref() {
+            let trump_card = self.hands[player_ind]
+                .iter()
+                .find(|card| card.suit == *trump_suit);
+
+            trump_card.is_some()
+        } else {
+            false
+        }
+    }
+
+    fn is_trump(&self, card: &Card) -> bool {
+        if let Some(trump_suit) = self.state.trump.as_ref() {
+            *trump_suit == card.suit
+        } else {
+            false
+        }
     }
 }

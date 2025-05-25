@@ -6,9 +6,10 @@ use prefsty::core::{
 fn main() {
     let room = Room::new();
 
-    let res = room.game.validate(GameAction {
+    let action = GameAction {
         player_ind: 0,
         kind: GameActionKind::Bid,
-    });
+    };
+    let res = room.game.validate(&action);
     assert_eq!(res, true);
 }
