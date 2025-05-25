@@ -1,27 +1,49 @@
 use super::{
     actions::{GameAction, GameActionKind},
-    game::Game,
+    game::{CardsInPlay, Game, PlayerScore},
     types::{Card, GameContract},
 };
 
-pub struct ChoosingCardsState;
+pub struct ChoosingCardsState {
+    contract_bid: GameContract,
+}
 
 impl Game<ChoosingCardsState> {
+    pub fn new(
+        first: usize,
+        turn: usize,
+        cards: CardsInPlay,
+        score: [PlayerScore; 3],
+        contract_bid: GameContract,
+    ) -> Self {
+        Self {
+            first,
+            turn,
+            state: ChoosingCardsState { contract_bid },
+            cards,
+            score,
+        }
+    }
+
     pub fn validate(&self, action: &GameAction) -> bool {
-        match &action.kind {
-            GameActionKind::ChooseCards(cards) => self.is_contained(action.player_ind, cards),
+        match action.kind {
+            GameActionKind::ChooseCards(cards) => self.is_contained_in_hidden(cards),
             _ => false,
         }
     }
 
-    fn is_contained(&self, player_ind: usize, cards: &[Card]) -> bool {
+    fn is_contained_in_hidden(&self, cards: [Card; 2]) -> bool {
         for card in cards {
-            if !self.hands[player_ind].contains(&card) {
+            if !self.cards.hidden.contains(&card) {
                 return false;
             }
         }
 
         true
+    }
+
+    pub fn contract_bid(&self) -> GameContract {
+        self.state.contract_bid
     }
 }
 

@@ -3,6 +3,6 @@ pub mod game;
 pub mod player;
 pub mod types;
 
-mod bidding;
-mod choosing;
-mod playing;
+pub mod bidding;
+pub mod choosing;
+pub mod playing;

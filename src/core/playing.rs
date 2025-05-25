@@ -23,13 +23,13 @@ pub struct RoundState {
 
 impl Game<PlayingState> {
     pub fn validate(&self, action: &GameAction) -> bool {
-        match &action.kind {
+        match action.kind {
             GameActionKind::PlayCard(card) => self.validate_play_card(action.player_ind, card),
             _ => false,
         }
     }
 
-    fn validate_play_card(&self, player_ind: usize, card: &Card) -> bool {
+    fn validate_play_card(&self, player_ind: usize, card: Card) -> bool {
         if self.no_cards_played() || self.is_round_suit(card) {
             return true;
         } else if self.has_trump(player_ind) {
@@ -54,7 +54,7 @@ impl Game<PlayingState> {
         is_no_cards
     }
 
-    fn is_round_suit(&self, card: &Card) -> bool {
+    fn is_round_suit(&self, card: Card) -> bool {
         if let Some(suit) = self.state.round_state.suit.as_ref() {
             *suit == card.suit
         } else {
@@ -64,7 +64,7 @@ impl Game<PlayingState> {
 
     fn has_trump(&self, player_ind: usize) -> bool {
         if let Some(trump_suit) = self.state.trump.as_ref() {
-            let trump_card = self.hands[player_ind]
+            let trump_card = self.cards.hands[player_ind]
                 .iter()
                 .find(|card| card.suit == *trump_suit);
 
@@ -74,7 +74,7 @@ impl Game<PlayingState> {
         }
     }
 
-    fn is_trump(&self, card: &Card) -> bool {
+    fn is_trump(&self, card: Card) -> bool {
         if let Some(trump_suit) = self.state.trump.as_ref() {
             *trump_suit == card.suit
         } else {

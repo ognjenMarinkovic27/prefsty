@@ -5,6 +5,12 @@ pub struct GameAction {
     pub kind: GameActionKind,
 }
 
+impl GameAction {
+    pub fn new(player_ind: usize, kind: GameActionKind) -> GameAction {
+        GameAction { player_ind, kind }
+    }
+}
+
 pub enum GameActionKind {
     Bid,
     PassBid,

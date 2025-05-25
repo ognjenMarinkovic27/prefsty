@@ -1,10 +1,10 @@
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub struct Card {
     pub suit: CardSuit,
     pub value: CardValue,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum CardSuit {
     Spades,
     Diamonds,
@@ -12,18 +12,19 @@ pub enum CardSuit {
     Clubs,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum CardValue {
     Seven,
     Eight,
     Nine,
     Ten,
-    King,
+    Jack,
     Queen,
+    King,
     Ace,
 }
 
-#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 pub enum GameContract {
     Spades = 2,
     Diamonds = 3,
@@ -49,9 +50,3 @@ impl GameContract {
         *self == GameContract::Sans
     }
 }
-
-#[derive(Default, Clone)]
-pub struct Hands([Hand; 3]);
-
-#[derive(Default, Clone)]
-pub struct Hand(Vec<Card>);

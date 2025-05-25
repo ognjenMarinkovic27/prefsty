@@ -1,8 +1,8 @@
 use super::{
     actions::{GameAction, GameActionKind},
     choosing::ChoosingCardsState,
-    game::{Game, GameError, GameState, PlayerScore},
-    types::{Card, GameContract},
+    game::{CardsInPlay, Game, GameError, GameState, PlayerScore},
+    types::GameContract,
 };
 
 pub struct BiddingState {
@@ -16,6 +16,33 @@ pub struct Bid {
     bidder_ind: usize,
 }
 
+impl BiddingState {
+    fn where_next(&self) -> NextAfterBidding {
+        let mut passed_players = 0;
+        for i in 0..3 {
+            match self.player_states[i] {
+                PlayerBidState::PassedBid => passed_players += 1,
+                PlayerBidState::NoBid => return NextAfterBidding::Continue,
+                _ => {}
+            };
+        }
+
+        debug_assert!(passed_players <= 3);
+
+        match passed_players {
+            0 | 1 => NextAfterBidding::Continue,
+            2 => NextAfterBidding::ToChoosingCards,
+            _ => NextAfterBidding::ToNewHand,
+        }
+    }
+}
+
+enum NextAfterBidding {
+    Continue,
+    ToChoosingCards,
+    ToNewHand,
+}
+
 #[derive(Default, PartialEq, PartialOrd)]
 enum PlayerBidState {
     #[default]
@@ -25,7 +52,7 @@ enum PlayerBidState {
 }
 
 impl Game<BiddingState> {
-    pub fn new(first: usize, hands: [Vec<Card>; 3], score: [PlayerScore; 3]) -> Self {
+    pub fn new(first: usize, score: [PlayerScore; 3]) -> Self {
         Game {
             state: BiddingState {
                 bid: None,
@@ -34,13 +61,13 @@ impl Game<BiddingState> {
             },
             first,
             turn: first,
-            hands,
+            cards: CardsInPlay::deal_random(),
             score,
         }
     }
 
     pub fn validate(&self, action: &GameAction) -> bool {
-        match &action.kind {
+        match action.kind {
             GameActionKind::Bid | GameActionKind::PassBid => self.validate_bid(action.player_ind),
             GameActionKind::ClaimNoBid => self.validate_claim_nobid(action.player_ind),
             _ => false,
@@ -62,8 +89,8 @@ impl Game<BiddingState> {
         self.state.player_states[player_ind] == PlayerBidState::NoBid
     }
 
-    pub fn apply(self, action: &GameAction) -> Result<GameState, GameError> {
-        match &action.kind {
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        match action.kind {
             GameActionKind::Bid => Ok(self.bid(action.player_ind)),
             GameActionKind::PassBid => Ok(self.pass_bid(action.player_ind)),
             GameActionKind::ClaimNoBid => Ok(self.claim_no_bid(action.player_ind)),
@@ -73,20 +100,14 @@ impl Game<BiddingState> {
 
     fn bid(mut self, bidder_ind: usize) -> GameState {
         let bid_value = self.next_bid_value();
+
         self.state.can_steal_bid = false;
-
-        if bid_value.is_last() {
-            return GameState::ChoosingCards(self.to_choosing_cards());
-        }
-
         self.state.player_states[bidder_ind] = PlayerBidState::Bid(bid_value);
 
-        let state = self.to_next_bidding_state(Bid {
+        self.to_next(Bid {
             value: bid_value,
             bidder_ind,
-        });
-
-        GameState::Bidding(state)
+        })
     }
 
     fn next_bid_value(&self) -> GameContract {
@@ -105,7 +126,28 @@ impl Game<BiddingState> {
         }
     }
 
-    fn to_next_bidding_state(mut self, bid: Bid) -> Game<BiddingState> {
+    fn is_circle_completed(&self) -> bool {
+        self.turn == self.first
+    }
+
+    fn pass_bid(self, player_ind: usize) -> GameState {
+        todo!()
+    }
+
+    fn claim_no_bid(self, player_ind: usize) -> GameState {
+        todo!()
+    }
+
+    fn to_next(self, bid: Bid) -> GameState {
+        let where_next = self.state.where_next();
+        match where_next {
+            NextAfterBidding::Continue => self.to_next_bidding_state(bid),
+            NextAfterBidding::ToChoosingCards => self.to_choosing_cards(),
+            NextAfterBidding::ToNewHand => self.to_new_hand(),
+        }
+    }
+
+    fn to_next_bidding_state(mut self, bid: Bid) -> GameState {
         self.turn = self.next_turn();
 
         if self.is_circle_completed() {
@@ -125,23 +167,26 @@ impl Game<BiddingState> {
 
         self.state.bid = Some(bid);
 
-        self
+        GameState::Bidding(self)
     }
 
-    fn is_circle_completed(&self) -> bool {
-        self.turn == self.first
+    fn to_choosing_cards(self) -> GameState {
+        let bid = self.state.bid.unwrap();
+
+        GameState::ChoosingCards(<Game<ChoosingCardsState>>::new(
+            self.first,
+            bid.bidder_ind,
+            self.cards,
+            self.score,
+            bid.value,
+        ))
     }
 
-    fn to_choosing_cards(self) -> Game<ChoosingCardsState> {
-        todo!()
-    }
-
-    fn pass_bid(self, player_ind: usize) -> GameState {
-        todo!()
-    }
-
-    fn claim_no_bid(self, player_ind: usize) -> GameState {
-        todo!()
+    fn to_new_hand(&self) -> GameState {
+        GameState::Bidding(<Game<BiddingState>>::new(
+            self.first + 1,
+            Default::default(),
+        ))
     }
 
     fn next_turn(&self) -> usize {
