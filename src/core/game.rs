@@ -118,14 +118,14 @@ impl CardsInPlay {
 
 #[derive(Debug, Default)]
 pub struct PlayerScore {
-    bools: u32,
+    bulls: u32,
     soups: [u32; 2],
 }
 
 impl PlayerScore {
-    fn new(bools: u32) -> Self {
+    fn new(bulls: u32) -> Self {
         Self {
-            bools,
+            bulls,
             soups: [0; 2],
         }
     }
