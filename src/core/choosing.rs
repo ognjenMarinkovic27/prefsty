@@ -4,6 +4,7 @@ use super::{
     types::{Card, GameContract},
 };
 
+#[derive(Debug)]
 pub struct ChoosingCardsState {
     contract_bid: GameContract,
 }
@@ -47,6 +48,7 @@ impl Game<ChoosingCardsState> {
     }
 }
 
+#[derive(Debug)]
 pub struct ChoosingContractState {
     contract_bid: GameContract,
 }
@@ -60,6 +62,7 @@ impl Game<ChoosingContractState> {
     }
 }
 
+#[derive(Debug)]
 pub struct RespondingToContractState {
     contract: GameContract,
     declarer_ind: usize,
@@ -67,6 +70,27 @@ pub struct RespondingToContractState {
 }
 
 impl Game<RespondingToContractState> {
+    pub fn new(
+        first: usize,
+        turn: usize,
+        cards: CardsInPlay,
+        score: [PlayerScore; 3],
+        contract: GameContract,
+        declarer_ind: usize,
+    ) -> Self {
+        Game {
+            state: RespondingToContractState {
+                contract,
+                declarer_ind,
+                accepted: Default::default(),
+            },
+            first,
+            turn,
+            cards,
+            score,
+        }
+    }
+
     pub fn validate(&self, action: &GameAction) -> bool {
         use GameActionKind::*;
         match &action.kind {
@@ -85,6 +109,7 @@ impl Game<RespondingToContractState> {
     }
 }
 
+#[derive(Debug)]
 pub struct HelpOrContreToContractState {
     contract: GameContract,
     declarer_ind: usize,
@@ -117,6 +142,7 @@ impl Game<HelpOrContreToContractState> {
     }
 }
 
+#[derive(Debug)]
 pub struct ContreDeclaredState {
     contract: GameContract,
     contract_declarer_ind: usize,
@@ -124,6 +150,7 @@ pub struct ContreDeclaredState {
     contre_declarer_ind: usize,
 }
 
+#[derive(Debug)]
 pub enum ContreLevel {
     Contre,
     Recontre,

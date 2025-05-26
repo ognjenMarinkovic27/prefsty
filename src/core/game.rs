@@ -2,7 +2,11 @@ use rand::{rng, seq::SliceRandom};
 
 use super::{
     actions::GameAction,
-    bidding::*,
+    bidding::{
+        bidding::BiddingState,
+        no_bid::{NoBidChoiceState, NoBidClaimState},
+        *,
+    },
     choosing::*,
     player::Player,
     playing::*,
@@ -23,6 +27,7 @@ impl Room {
     }
 }
 
+#[derive(Debug)]
 pub struct Game<S> {
     pub state: S,
     pub first: usize,
@@ -31,6 +36,7 @@ pub struct Game<S> {
     pub score: [PlayerScore; 3],
 }
 
+#[derive(Debug)]
 pub struct CardsInPlay {
     pub hands: [Vec<Card>; 3],
     pub hidden: [Card; 2],
@@ -110,7 +116,7 @@ impl CardsInPlay {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PlayerScore {
     bools: u32,
     soups: [u32; 2],
@@ -124,16 +130,17 @@ impl<StateType> Game<StateType> {
     fn is_player_turn(&self, player_ind: usize) -> bool {
         return self.turn == player_ind;
     }
-
-    pub fn turn_inc(&self) -> usize {
-        (self.turn + 1) % 3
-    }
-
-    pub fn turn_dec(&self) -> usize {
-        (self.turn + 2) % 3
-    }
 }
 
+pub fn turn_inc(turn: usize) -> usize {
+    (turn + 1) % 3
+}
+
+pub fn turn_dec(turn: usize) -> usize {
+    (turn + 2) % 3
+}
+
+#[derive(Debug)]
 pub enum GameState {
     Bidding(Game<BiddingState>),
     NoBidPlayClaim(Game<NoBidClaimState>),
@@ -167,8 +174,8 @@ impl GameState {
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
         match self {
             GameState::Bidding(game) => game.apply(action),
-            GameState::NoBidPlayClaim(game) => todo!(),
-            GameState::NoBidPlayChoice(game) => todo!(),
+            GameState::NoBidPlayClaim(game) => game.apply(action),
+            GameState::NoBidPlayChoice(game) => game.apply(action),
             GameState::ChoosingCards(game) => todo!(),
             GameState::ChoosingContract(game) => todo!(),
             GameState::RespondingToContract(game) => todo!(),

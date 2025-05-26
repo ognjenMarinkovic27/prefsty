@@ -8,6 +8,7 @@ use super::{
     game::Game,
 };
 
+#[derive(Debug)]
 pub struct PlayingState {
     contract: GameContract,
     declarer_ind: usize,
@@ -16,6 +17,7 @@ pub struct PlayingState {
     round_state: RoundState,
 }
 
+#[derive(Debug)]
 pub struct RoundState {
     played_cards: [Option<Card>; 3],
     suit: Option<CardSuit>,
