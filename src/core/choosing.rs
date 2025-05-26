@@ -1,6 +1,6 @@
 use super::{
     actions::{CardChoice, GameAction, GameActionKind},
-    game::{CardsInPlay, Game, GameError, GameState, PlayerScore},
+    game::{CardsInPlay, Game, GameError, GameState, PlayerScore, turn_inc},
     types::{Card, GameContract},
 };
 
@@ -136,13 +136,37 @@ impl Game<ChoosingContractState> {
             _ => false,
         }
     }
+
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        match action.kind {
+            GameActionKind::ChooseContract(contract) => Ok(self.choose_contract(contract)),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn choose_contract(self, contract: GameContract) -> GameState {
+        let next_turn = turn_inc(self.turn);
+        GameState::RespondingToContract(<Game<RespondingToContractState>>::new(
+            self.first, next_turn, self.cards, self.score, contract, self.turn,
+        ))
+    }
 }
 
 #[derive(Debug)]
 pub struct RespondingToContractState {
     contract: GameContract,
     declarer_ind: usize,
-    accepted: [bool; 3],
+    player_responses: [PlayerResponseState; 3],
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub enum PlayerResponseState {
+    #[default]
+    NoResponse,
+    Accepted,
+    Rejected,
+    Caller,
+    Called,
 }
 
 impl Game<RespondingToContractState> {
@@ -158,7 +182,7 @@ impl Game<RespondingToContractState> {
             state: RespondingToContractState {
                 contract,
                 declarer_ind,
-                accepted: Default::default(),
+                player_responses: Default::default(),
             },
             first,
             turn,
@@ -183,16 +207,96 @@ impl Game<RespondingToContractState> {
 
         true
     }
+
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        use GameActionKind::*;
+        match action.kind {
+            AcceptContract => Ok(self.accept_contract()),
+            RejectContract => Ok(self.reject_contract()),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn accept_contract(mut self) -> GameState {
+        self.state.player_responses[self.turn] = PlayerResponseState::Accepted;
+
+        self.to_next()
+    }
+
+    fn reject_contract(mut self) -> GameState {
+        self.state.player_responses[self.turn] = PlayerResponseState::Rejected;
+
+        self.to_next()
+    }
+
+    fn to_next(self) -> GameState {
+        let number_of_responses = self.count_responses();
+
+        if number_of_responses < 2 {
+            self.to_next_respond_to_contract_state()
+        } else {
+            self.to_help_or_contre_state()
+        }
+    }
+
+    fn to_next_respond_to_contract_state(mut self) -> GameState {
+        self.turn = turn_inc(self.turn);
+
+        GameState::RespondingToContract(self)
+    }
+
+    fn to_help_or_contre_state(self) -> GameState {
+        let next_turn = turn_inc(self.turn);
+        GameState::HelpOrContreToContract(<Game<HelpOrContreToContractState>>::new(
+            self.first,
+            next_turn,
+            self.cards,
+            self.score,
+            self.state.contract,
+            self.state.declarer_ind,
+            self.state.player_responses,
+        ))
+    }
+
+    fn count_responses(&self) -> usize {
+        self.state
+            .player_responses
+            .iter()
+            .filter(|&&r| r != PlayerResponseState::NoResponse)
+            .count()
+    }
 }
 
 #[derive(Debug)]
 pub struct HelpOrContreToContractState {
     contract: GameContract,
     declarer_ind: usize,
-    accepted: [bool; 3],
+    player_responses: [PlayerResponseState; 3],
 }
 
 impl Game<HelpOrContreToContractState> {
+    pub fn new(
+        first: usize,
+        turn: usize,
+        cards: CardsInPlay,
+        score: [PlayerScore; 3],
+        contract: GameContract,
+        declarer_ind: usize,
+        player_responses: [PlayerResponseState; 3],
+    ) -> Self {
+        Game {
+            state: HelpOrContreToContractState {
+                contract,
+                declarer_ind,
+                player_responses,
+            },
+            first,
+            turn,
+            cards,
+            score,
+        }
+    }
+
     pub fn validate(&self, action: &GameAction) -> bool {
         match &action.kind {
             GameActionKind::CallForHelp => self.validate_call_for_help(action.player_ind),
@@ -204,7 +308,7 @@ impl Game<HelpOrContreToContractState> {
 
     fn validate_call_for_help(&self, player_ind: usize) -> bool {
         let teammate_ind = get_third_ind(player_ind, self.state.declarer_ind);
-        !self.state.accepted[teammate_ind]
+        self.state.player_responses[teammate_ind] == PlayerResponseState::Rejected
     }
 
     fn validate_declare_contre(&self, player_ind: usize) -> bool {
@@ -216,17 +320,65 @@ impl Game<HelpOrContreToContractState> {
     fn validate_pass_help_contre(&self) -> bool {
         true
     }
+
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        match &action.kind {
+            GameActionKind::CallForHelp => Ok(self.call_for_help()),
+            GameActionKind::DeclareContre => Ok(self.declare_contre()),
+            GameActionKind::PassHelpContre => Ok(self.pass_help_contre()),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn call_for_help(mut self) -> GameState {
+        self.state.player_responses[self.turn] = PlayerResponseState::Caller;
+        let called_ind = get_third_ind(self.turn, self.state.declarer_ind);
+        self.state.player_responses[called_ind] = PlayerResponseState::Called;
+
+        GameState::Playing(todo!())
+    }
+
+    fn declare_contre(self) -> GameState {
+        GameState::ContreDeclared(<Game<ContreDeclaredState>>::new(
+            self.first,
+            self.state.declarer_ind,
+            self.cards,
+            self.score,
+            self.state.contract,
+            self.state.declarer_ind,
+            self.state.player_responses,
+        ))
+    }
+
+    fn pass_help_contre(mut self) -> GameState {
+        let next_turn = turn_inc(self.turn);
+        if next_turn == self.state.declarer_ind {
+            GameState::Playing(todo!())
+        } else {
+            self.turn = next_turn;
+            GameState::HelpOrContreToContract(self)
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct ContreDeclaredState {
     contract: GameContract,
-    contract_declarer_ind: usize,
+    declarer_ind: usize,
     contre_level: ContreLevel,
-    contre_declarer_ind: usize,
+    player_responses: [PlayerResponseState; 3],
 }
 
-#[derive(Debug)]
+impl ContreDeclaredState {
+    fn contre_declarer_ind(&self) -> usize {
+        self.player_responses
+            .iter()
+            .position(|&x| x == PlayerResponseState::NoResponse)
+            .unwrap()
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ContreLevel {
     Contre,
     Recontre,
@@ -234,7 +386,41 @@ pub enum ContreLevel {
     FuckYouContre,
 }
 
+impl ContreLevel {
+    fn next(&self) -> Self {
+        match self {
+            ContreLevel::Contre => ContreLevel::Recontre,
+            ContreLevel::Recontre => ContreLevel::Subcontre,
+            ContreLevel::Subcontre => ContreLevel::FuckYouContre,
+            ContreLevel::FuckYouContre => ContreLevel::FuckYouContre,
+        }
+    }
+}
+
 impl Game<ContreDeclaredState> {
+    pub fn new(
+        first: usize,
+        turn: usize,
+        cards: CardsInPlay,
+        score: [PlayerScore; 3],
+        contract: GameContract,
+        declarer_ind: usize,
+        player_responses: [PlayerResponseState; 3],
+    ) -> Self {
+        Game {
+            state: ContreDeclaredState {
+                contract,
+                declarer_ind,
+                contre_level: ContreLevel::Contre,
+                player_responses,
+            },
+            first,
+            turn,
+            cards,
+            score,
+        }
+    }
+
     pub fn validate(&self, action: &GameAction) -> bool {
         match action.kind {
             GameActionKind::DeclareContre => self.validate_declare_contre(action.player_ind),
@@ -244,10 +430,7 @@ impl Game<ContreDeclaredState> {
     }
 
     fn validate_declare_contre(&self, player_ind: usize) -> bool {
-        let last_declarer_id = match &self.state.contre_level {
-            ContreLevel::Contre | ContreLevel::Subcontre => self.state.contract_declarer_ind,
-            ContreLevel::Recontre | ContreLevel::FuckYouContre => self.state.contre_declarer_ind,
-        };
+        let last_declarer_id = self.last_declarer_id();
 
         assert_ids_differ(last_declarer_id, player_ind);
 
@@ -256,6 +439,40 @@ impl Game<ContreDeclaredState> {
 
     fn validate_pass_help_contre(&self) -> bool {
         true
+    }
+
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        match action.kind {
+            GameActionKind::DeclareContre => Ok(self.apply_declare_contre()),
+            GameActionKind::PassHelpContre => Ok(self.apply_pass_help_contre()),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn apply_declare_contre(mut self) -> GameState {
+        self.turn = self.next_declarer_id();
+        self.state.contre_level = self.state.contre_level.next();
+
+        if self.state.contre_level != ContreLevel::FuckYouContre {
+            GameState::ContreDeclared(self)
+        } else {
+            GameState::Playing(todo!())
+        }
+    }
+
+    fn last_declarer_id(&self) -> usize {
+        match &self.state.contre_level {
+            ContreLevel::Contre | ContreLevel::Subcontre => self.state.declarer_ind,
+            ContreLevel::Recontre | ContreLevel::FuckYouContre => self.state.contre_declarer_ind(),
+        }
+    }
+
+    fn next_declarer_id(&self) -> usize {
+        self.last_declarer_id()
+    }
+
+    fn apply_pass_help_contre(self) -> GameState {
+        GameState::Playing(todo!())
     }
 }
 

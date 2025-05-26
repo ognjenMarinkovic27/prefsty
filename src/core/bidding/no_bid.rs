@@ -11,9 +11,7 @@ use crate::core::types::GameContract;
 
 use super::Bid;
 use super::PlayerBidState;
-use super::share::count_passed;
 use super::share::next_turn;
-use super::share::no_bid_exists;
 
 #[derive(Debug)]
 pub struct NoBidClaimState {

@@ -5,7 +5,6 @@ use super::{
     bidding::{
         bidding::BiddingState,
         no_bid::{NoBidChoiceState, NoBidClaimState},
-        *,
     },
     choosing::*,
     player::Player,
@@ -15,14 +14,12 @@ use super::{
 
 pub struct Room {
     pub game: GameState,
-    players: Vec<Player>,
 }
 
 impl Room {
     pub fn new() -> Self {
         Room {
             game: GameState::Bidding(<Game<BiddingState>>::new(0, Default::default())),
-            players: Vec::new(),
         }
     }
 }
