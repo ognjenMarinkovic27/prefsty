@@ -1,6 +1,6 @@
 use super::{
-    actions::{GameAction, GameActionKind},
-    game::{CardsInPlay, Game, PlayerScore},
+    actions::{CardChoice, GameAction, GameActionKind},
+    game::{CardsInPlay, Game, GameError, GameState, PlayerScore},
     types::{Card, GameContract},
 };
 
@@ -27,20 +27,80 @@ impl Game<ChoosingCardsState> {
     }
 
     pub fn validate(&self, action: &GameAction) -> bool {
-        match action.kind {
-            GameActionKind::ChooseCards(cards) => self.is_contained_in_hidden(cards),
+        match &action.kind {
+            GameActionKind::ChooseCards(choice) => self.validate_choose_cards(choice),
             _ => false,
         }
     }
 
-    fn is_contained_in_hidden(&self, cards: [Card; 2]) -> bool {
-        for card in cards {
-            if !self.cards.hidden.contains(&card) {
+    fn validate_choose_cards(&self, choice: &CardChoice) -> bool {
+        if choice.take_cards.len() + choice.discard_cards.len() != 2 {
+            return false;
+        }
+
+        if !self.hidden_cards_contain_take(&choice.take_cards) {
+            return false;
+        }
+
+        if !self.hand_cards_contain_discard(&choice.discard_cards) {
+            return false;
+        }
+
+        true
+    }
+
+    fn hidden_cards_contain_take(&self, take_cards: &[Card]) -> bool {
+        Self::is_cards_contained(&self.cards.hidden, take_cards)
+    }
+
+    fn hand_cards_contain_discard(&self, discard_cards: &[Card]) -> bool {
+        let current_player_ind = self.turn;
+        Self::is_cards_contained(&self.cards.hands[current_player_ind], discard_cards)
+    }
+
+    fn is_cards_contained(container: &[Card], searched: &[Card]) -> bool {
+        for card in searched {
+            if !container.contains(card) {
                 return false;
             }
         }
 
         true
+    }
+
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        match action.kind {
+            GameActionKind::ChooseCards(choice) => Ok(self.take_chosen_cards(choice)),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    pub fn take_chosen_cards(mut self, choice: CardChoice) -> GameState {
+        let current_player_hand = &mut self.cards.hands[self.turn];
+        *current_player_hand = Self::remove_cards(current_player_hand, &choice.discard_cards);
+
+        current_player_hand.extend_from_slice(&choice.take_cards);
+
+        self.to_choose_contract()
+    }
+
+    fn remove_cards(container: &[Card], cards_to_remove: &[Card]) -> Vec<Card> {
+        let mut vec_container = container.to_vec();
+        for card in cards_to_remove {
+            let card_pos = container.iter().position(|c| c == card).unwrap();
+            vec_container.swap_remove(card_pos);
+        }
+        vec_container
+    }
+
+    fn to_choose_contract(self) -> GameState {
+        GameState::ChoosingContract(<Game<ChoosingContractState>>::new(
+            self.first,
+            self.turn,
+            self.cards,
+            self.score,
+            self.state.contract_bid,
+        ))
     }
 
     pub fn contract_bid(&self) -> GameContract {
@@ -54,6 +114,22 @@ pub struct ChoosingContractState {
 }
 
 impl Game<ChoosingContractState> {
+    fn new(
+        first: usize,
+        turn: usize,
+        cards: CardsInPlay,
+        score: [PlayerScore; 3],
+        contract_bid: GameContract,
+    ) -> Self {
+        Self {
+            state: ChoosingContractState { contract_bid },
+            first,
+            turn,
+            cards,
+            score,
+        }
+    }
+
     pub fn validate(&self, action: &GameAction) -> bool {
         match &action.kind {
             GameActionKind::ChooseContract(contract) => *contract > self.state.contract_bid,

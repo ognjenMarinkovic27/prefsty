@@ -16,7 +16,7 @@ pub enum GameActionKind {
     PassBid,
     ClaimNoBid,
     ChooseNoBidContract(GameContract),
-    ChooseCards([Card; 2]),
+    ChooseCards(CardChoice),
     ChooseContract(GameContract),
     AcceptContract,
     RejectContract,
@@ -24,4 +24,9 @@ pub enum GameActionKind {
     DeclareContre,
     PassHelpContre,
     PlayCard(Card),
+}
+
+pub struct CardChoice {
+    pub take_cards: Vec<Card>,
+    pub discard_cards: Vec<Card>,
 }
