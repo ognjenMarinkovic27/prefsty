@@ -162,7 +162,7 @@ impl Game<BiddingState> {
     fn to_new_hand(self) -> GameState {
         GameState::Bidding(<Game<BiddingState>>::new_starting_state(
             self.first + 1,
-            Default::default(),
+            self.score,
         ))
     }
 
