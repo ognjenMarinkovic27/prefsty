@@ -19,7 +19,10 @@ pub struct Room {
 impl Room {
     pub fn new() -> Self {
         Room {
-            game: GameState::Bidding(<Game<BiddingState>>::new(0, Default::default())),
+            game: GameState::Bidding(<Game<BiddingState>>::new_starting_state(
+                0,
+                Default::default(),
+            )),
         }
     }
 }
@@ -117,6 +120,15 @@ impl CardsInPlay {
 pub struct PlayerScore {
     bools: u32,
     soups: [u32; 2],
+}
+
+impl PlayerScore {
+    fn new(bools: u32) -> Self {
+        Self {
+            bools,
+            soups: [0; 2],
+        }
+    }
 }
 
 impl<StateType> Game<StateType> {

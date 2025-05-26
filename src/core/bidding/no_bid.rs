@@ -1,12 +1,9 @@
 use crate::core::actions::GameAction;
 use crate::core::actions::GameActionKind;
 use crate::core::choosing::RespondingToContractState;
-use crate::core::game::CardsInPlay;
 use crate::core::game::Game;
 use crate::core::game::GameError;
 use crate::core::game::GameState;
-use crate::core::game::PlayerScore;
-use crate::core::game::turn_inc;
 use crate::core::types::GameContract;
 
 use super::Bid;
@@ -18,23 +15,13 @@ pub struct NoBidClaimState {
     player_states: [PlayerBidState; 3],
 }
 
-impl Game<NoBidClaimState> {
-    pub(super) fn new(
-        first: usize,
-        turn: usize,
-        cards: CardsInPlay,
-        score: [PlayerScore; 3],
-        player_states: [PlayerBidState; 3],
-    ) -> Self {
-        Game {
-            state: NoBidClaimState { player_states },
-            first,
-            turn,
-            cards,
-            score,
-        }
+impl NoBidClaimState {
+    pub(super) fn new(player_states: [PlayerBidState; 3]) -> Self {
+        Self { player_states }
     }
+}
 
+impl Game<NoBidClaimState> {
     pub fn validate(&self, action: &GameAction) -> bool {
         match action.kind {
             GameActionKind::ClaimNoBid => {
@@ -84,12 +71,7 @@ impl Game<NoBidClaimState> {
     }
 
     fn to_no_bid_choice_state(self) -> GameState {
-        let next_turn = self.index_of_first_no_play_claimer();
-        let claims = self.number_of_no_play_claims();
-
-        GameState::NoBidPlayChoice(<Game<NoBidChoiceState>>::new(
-            self.first, next_turn, self.cards, self.score, claims,
-        ))
+        GameState::NoBidPlayChoice(self.into())
     }
 
     fn index_of_first_no_play_claimer(&self) -> usize {
@@ -115,29 +97,34 @@ impl Game<NoBidClaimState> {
     }
 }
 
+impl From<Game<NoBidClaimState>> for Game<NoBidChoiceState> {
+    fn from(prev: Game<NoBidClaimState>) -> Self {
+        let next_turn = prev.index_of_first_no_play_claimer();
+        let claims = prev.number_of_no_play_claims();
+
+        Self {
+            state: NoBidChoiceState { bid: None, claims },
+            first: prev.first,
+            turn: next_turn,
+            cards: prev.cards,
+            score: prev.score,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct NoBidChoiceState {
     bid: Option<Bid>,
     claims: usize,
 }
 
-impl Game<NoBidChoiceState> {
-    pub(super) fn new(
-        first: usize,
-        turn: usize,
-        cards: CardsInPlay,
-        score: [PlayerScore; 3],
-        claims: usize,
-    ) -> Self {
-        Game {
-            state: NoBidChoiceState { bid: None, claims },
-            first,
-            turn,
-            cards,
-            score,
-        }
+impl NoBidChoiceState {
+    pub fn new(bid: Option<Bid>, claims: usize) -> Self {
+        Self { bid, claims }
     }
+}
 
+impl Game<NoBidChoiceState> {
     pub fn validate(&self, action: &GameAction) -> bool {
         match action.kind {
             GameActionKind::ChooseNoBidContract(contract) => {
@@ -179,23 +166,28 @@ impl Game<NoBidChoiceState> {
         if self.state.claims > 0 {
             GameState::NoBidPlayChoice(self)
         } else {
-            let Bid {
-                value: contract,
-                bidder_ind: declarer_ind,
-            } = self.state.bid.unwrap();
-
-            GameState::RespondingToContract(<Game<RespondingToContractState>>::new(
-                self.first,
-                turn_inc(self.turn),
-                self.cards,
-                self.score,
-                contract,
-                declarer_ind,
-            ))
+            GameState::RespondingToContract(self.into())
         }
     }
 
     pub fn contract_bid(&self) -> Option<GameContract> {
         self.state.bid.as_ref().map(|b| b.value)
+    }
+}
+
+impl From<Game<NoBidChoiceState>> for Game<RespondingToContractState> {
+    fn from(prev: Game<NoBidChoiceState>) -> Self {
+        let Bid {
+            value: contract,
+            bidder_ind: declarer_ind,
+        } = prev.state.bid.unwrap();
+
+        Self {
+            state: RespondingToContractState::new(contract, declarer_ind),
+            first: prev.first,
+            turn: prev.turn,
+            cards: prev.cards,
+            score: prev.score,
+        }
     }
 }

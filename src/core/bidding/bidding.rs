@@ -19,7 +19,7 @@ pub struct BiddingState {
 }
 
 impl Game<BiddingState> {
-    pub fn new(first: usize, score: [PlayerScore; 3]) -> Self {
+    pub fn new_starting_state(first: usize, score: [PlayerScore; 3]) -> Self {
         Game {
             state: BiddingState {
                 bid: None,
@@ -156,19 +156,11 @@ impl Game<BiddingState> {
     }
 
     fn to_choosing_cards(self) -> GameState {
-        let bid = self.state.bid.unwrap();
-
-        GameState::ChoosingCards(<Game<ChoosingCardsState>>::new(
-            self.first,
-            bid.bidder_ind,
-            self.cards,
-            self.score,
-            bid.value,
-        ))
+        GameState::ChoosingCards(self.into())
     }
 
-    fn to_new_hand(&self) -> GameState {
-        GameState::Bidding(<Game<BiddingState>>::new(
+    fn to_new_hand(self) -> GameState {
+        GameState::Bidding(<Game<BiddingState>>::new_starting_state(
             self.first + 1,
             Default::default(),
         ))
@@ -179,23 +171,10 @@ impl Game<BiddingState> {
 
         let next_turn = self.next_turn();
         if next_turn != self.first {
-            self.to_no_bid_play_claim()
+            GameState::NoBidPlayClaim(self.into())
         } else {
-            self.to_no_bid_play_choice()
+            GameState::NoBidPlayChoice(self.into())
         }
-    }
-
-    fn to_no_bid_play_claim(self) -> GameState {
-        let next_turn = self.next_turn();
-        let bids_turned_to_passes = self.bids_as_passes();
-
-        GameState::NoBidPlayClaim(<Game<NoBidClaimState>>::new(
-            self.first,
-            next_turn,
-            self.cards,
-            self.score,
-            bids_turned_to_passes,
-        ))
     }
 
     fn bids_as_passes(&self) -> [PlayerBidState; 3] {
@@ -208,13 +187,48 @@ impl Game<BiddingState> {
         })
     }
 
-    fn to_no_bid_play_choice(self) -> GameState {
-        GameState::NoBidPlayChoice(<Game<NoBidChoiceState>>::new(
-            self.first, self.turn, self.cards, self.score, 1,
-        ))
-    }
-
     fn next_turn(&self) -> usize {
         next_turn(self.turn, &self.state.player_states)
+    }
+}
+
+impl From<Game<BiddingState>> for Game<ChoosingCardsState> {
+    fn from(prev: Game<BiddingState>) -> Self {
+        let bid = prev.state.bid.unwrap();
+
+        Self {
+            state: ChoosingCardsState::new(bid.value),
+            first: prev.first,
+            turn: bid.bidder_ind,
+            cards: prev.cards,
+            score: prev.score,
+        }
+    }
+}
+
+impl From<Game<BiddingState>> for Game<NoBidClaimState> {
+    fn from(prev: Game<BiddingState>) -> Self {
+        let next_turn = prev.next_turn();
+        let bids_turned_to_passes = prev.bids_as_passes();
+
+        Self {
+            state: NoBidClaimState::new(bids_turned_to_passes),
+            first: prev.first,
+            turn: next_turn,
+            cards: prev.cards,
+            score: prev.score,
+        }
+    }
+}
+
+impl From<Game<BiddingState>> for Game<NoBidChoiceState> {
+    fn from(prev: Game<BiddingState>) -> Self {
+        Self {
+            state: NoBidChoiceState::new(None, 1),
+            first: prev.first,
+            turn: prev.turn,
+            cards: prev.cards,
+            score: prev.score,
+        }
     }
 }
