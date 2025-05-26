@@ -1,5 +1,6 @@
 use super::{
     actions::{CardChoice, GameAction, GameActionKind},
+    bidding::bidding::BiddingState,
     game::{Game, GameError, GameState, get_third_ind, turn_inc},
     playing::PlayingState,
     types::{Card, GameContract, GameContractData, GameContractKind},
@@ -226,9 +227,27 @@ impl Game<RespondingToContractState> {
 
         if number_of_responses < 2 {
             self.to_next_respond_to_contract_state()
-        } else {
+        } else if self.count_rejects() < 2 {
             self.to_help_or_contre_state()
+        } else {
+            self.to_new_hand()
         }
+    }
+
+    fn count_responses(&self) -> usize {
+        self.state
+            .player_responses
+            .iter()
+            .filter(|&&r| r != PlayerResponseState::NoResponse)
+            .count()
+    }
+
+    fn count_rejects(&self) -> usize {
+        self.state
+            .player_responses
+            .iter()
+            .filter(|&&r| r == PlayerResponseState::Rejected)
+            .count()
     }
 
     fn to_next_respond_to_contract_state(mut self) -> GameState {
@@ -241,12 +260,11 @@ impl Game<RespondingToContractState> {
         GameState::HelpOrContreToContract(self.into())
     }
 
-    fn count_responses(&self) -> usize {
-        self.state
-            .player_responses
-            .iter()
-            .filter(|&&r| r != PlayerResponseState::NoResponse)
-            .count()
+    fn to_new_hand(mut self) -> GameState {
+        self.score[self.state.declarer_ind] =
+            self.score[self.state.declarer_ind].apply_pass(self.state.contract);
+
+        GameState::Bidding(self.into())
     }
 }
 
@@ -265,6 +283,12 @@ impl From<Game<RespondingToContractState>> for Game<HelpOrContreToContractState>
             cards: prev.cards,
             score: prev.score,
         }
+    }
+}
+
+impl From<Game<RespondingToContractState>> for Game<BiddingState> {
+    fn from(prev: Game<RespondingToContractState>) -> Self {
+        <Game<BiddingState>>::new_starting_state(turn_inc(prev.first), prev.score)
     }
 }
 
