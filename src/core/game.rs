@@ -7,9 +7,8 @@ use super::{
         no_bid::{NoBidChoiceState, NoBidClaimState},
     },
     choosing::*,
-    player::Player,
     playing::*,
-    types::{Card, CardSuit, CardValue},
+    types::{Card, CardSuit, CardValue, GameContractData, GameContractKind},
 };
 
 pub struct Room {
@@ -21,7 +20,11 @@ impl Room {
         Room {
             game: GameState::Bidding(<Game<BiddingState>>::new_starting_state(
                 0,
-                Default::default(),
+                [
+                    PlayerScore::new(60),
+                    PlayerScore::new(60),
+                    PlayerScore::new(60),
+                ],
             )),
         }
     }
@@ -116,7 +119,7 @@ impl CardsInPlay {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct PlayerScore {
     bulls: u32,
     soups: [u32; 2],
@@ -128,6 +131,38 @@ impl PlayerScore {
             bulls,
             soups: [0; 2],
         }
+    }
+
+    pub fn apply_pass(mut self, contract: GameContractData) -> Self {
+        self.bulls -= Self::contract_value(contract);
+
+        self
+    }
+
+    pub fn apply_fail(mut self, contract: GameContractData) -> Self {
+        self.bulls += Self::contract_value(contract);
+
+        self
+    }
+
+    pub fn apply_soups(
+        mut self,
+        contract: GameContractData,
+        num_soups: u32,
+        soups_ind: usize,
+    ) -> Self {
+        self.soups[soups_ind] += num_soups * Self::contract_value(contract);
+
+        self
+    }
+
+    fn contract_value(contract: GameContractData) -> u32 {
+        let contract_value = match contract.kind {
+            GameContractKind::Bid => contract.value.numerical_value(),
+            GameContractKind::NoBid => contract.value.numerical_value() + 2,
+        };
+
+        contract_value * 2
     }
 }
 
@@ -185,12 +220,12 @@ impl GameState {
             GameState::Bidding(game) => game.apply(action),
             GameState::NoBidPlayClaim(game) => game.apply(action),
             GameState::NoBidPlayChoice(game) => game.apply(action),
-            GameState::ChoosingCards(game) => todo!(),
-            GameState::ChoosingContract(game) => todo!(),
-            GameState::RespondingToContract(game) => todo!(),
-            GameState::HelpOrContreToContract(game) => todo!(),
-            GameState::ContreDeclared(game) => todo!(),
-            GameState::Playing(game) => todo!(),
+            GameState::ChoosingCards(game) => game.apply(action),
+            GameState::ChoosingContract(game) => game.apply(action),
+            GameState::RespondingToContract(game) => game.apply(action),
+            GameState::HelpOrContreToContract(game) => game.apply(action),
+            GameState::ContreDeclared(game) => game.apply(action),
+            GameState::Playing(game) => game.apply(action),
         }
     }
 }
@@ -198,4 +233,9 @@ impl GameState {
 #[derive(Debug)]
 pub enum GameError {
     InvalidAction,
+}
+
+pub fn get_third_ind(ind1: usize, ind2: usize) -> usize {
+    // Indexes can be 0, 1 and 2
+    return 3 - ind1 - ind2;
 }

@@ -1,7 +1,8 @@
 use super::{
     actions::{CardChoice, GameAction, GameActionKind},
-    game::{CardsInPlay, Game, GameError, GameState, PlayerScore, turn_inc},
-    types::{Card, GameContract},
+    game::{Game, GameError, GameState, get_third_ind, turn_inc},
+    playing::PlayingState,
+    types::{Card, GameContract, GameContractData, GameContractKind},
 };
 
 #[derive(Debug)]
@@ -16,22 +17,6 @@ impl ChoosingCardsState {
 }
 
 impl Game<ChoosingCardsState> {
-    pub fn new(
-        first: usize,
-        turn: usize,
-        cards: CardsInPlay,
-        score: [PlayerScore; 3],
-        contract_bid: GameContract,
-    ) -> Self {
-        Self {
-            first,
-            turn,
-            state: ChoosingCardsState { contract_bid },
-            cards,
-            score,
-        }
-    }
-
     pub fn validate(&self, action: &GameAction) -> bool {
         match &action.kind {
             GameActionKind::ChooseCards(choice) => self.validate_choose_cards(choice),
@@ -40,7 +25,7 @@ impl Game<ChoosingCardsState> {
     }
 
     fn validate_choose_cards(&self, choice: &CardChoice) -> bool {
-        if choice.take_cards.len() + choice.discard_cards.len() != 2 {
+        if choice.take_cards.len() == choice.discard_cards.len() {
             return false;
         }
 
@@ -155,7 +140,10 @@ impl From<Game<ChoosingContractState>> for Game<RespondingToContractState> {
 
         Self {
             state: RespondingToContractState {
-                contract: prev.state.contract_bid,
+                contract: GameContractData {
+                    value: prev.state.contract_bid,
+                    kind: GameContractKind::Bid,
+                },
                 declarer_ind: prev.turn,
                 player_responses: Default::default(),
             },
@@ -169,13 +157,13 @@ impl From<Game<ChoosingContractState>> for Game<RespondingToContractState> {
 
 #[derive(Debug)]
 pub struct RespondingToContractState {
-    contract: GameContract,
+    contract: GameContractData,
     declarer_ind: usize,
     player_responses: [PlayerResponseState; 3],
 }
 
 impl RespondingToContractState {
-    pub fn new(contract: GameContract, declarer_ind: usize) -> Self {
+    pub fn new(contract: GameContractData, declarer_ind: usize) -> Self {
         Self {
             contract,
             declarer_ind,
@@ -282,7 +270,7 @@ impl From<Game<RespondingToContractState>> for Game<HelpOrContreToContractState>
 
 #[derive(Debug)]
 pub struct HelpOrContreToContractState {
-    contract: GameContract,
+    contract: GameContractData,
     declarer_ind: usize,
     player_responses: [PlayerResponseState; 3],
 }
@@ -326,7 +314,7 @@ impl Game<HelpOrContreToContractState> {
         let called_ind = get_third_ind(self.turn, self.state.declarer_ind);
         self.state.player_responses[called_ind] = PlayerResponseState::Called;
 
-        GameState::Playing(todo!())
+        GameState::Playing(self.into())
     }
 
     fn declare_contre(self) -> GameState {
@@ -336,7 +324,7 @@ impl Game<HelpOrContreToContractState> {
     fn pass_help_contre(mut self) -> GameState {
         let next_turn = turn_inc(self.turn);
         if next_turn == self.state.declarer_ind {
-            GameState::Playing(todo!())
+            GameState::Playing(self.into())
         } else {
             self.turn = next_turn;
             GameState::HelpOrContreToContract(self)
@@ -361,9 +349,31 @@ impl From<Game<HelpOrContreToContractState>> for Game<ContreDeclaredState> {
     }
 }
 
+impl From<Game<HelpOrContreToContractState>> for Game<PlayingState> {
+    fn from(prev: Game<HelpOrContreToContractState>) -> Game<PlayingState> {
+        let turn = prev
+            .state
+            .contract
+            .value
+            .first_to_play(prev.first, prev.state.declarer_ind);
+
+        Self {
+            state: PlayingState::new(
+                prev.state.contract,
+                prev.state.declarer_ind,
+                prev.state.player_responses,
+            ),
+            first: prev.first,
+            turn: turn,
+            cards: prev.cards,
+            score: prev.score,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ContreDeclaredState {
-    contract: GameContract,
+    contract: GameContractData,
     declarer_ind: usize,
     contre_level: ContreLevel,
     player_responses: [PlayerResponseState; 3],
@@ -433,7 +443,7 @@ impl Game<ContreDeclaredState> {
         if self.state.contre_level != ContreLevel::FuckYouContre {
             GameState::ContreDeclared(self)
         } else {
-            GameState::Playing(todo!())
+            GameState::Playing(self.into())
         }
     }
 
@@ -449,7 +459,29 @@ impl Game<ContreDeclaredState> {
     }
 
     fn apply_pass_help_contre(self) -> GameState {
-        GameState::Playing(todo!())
+        GameState::Playing(self.into())
+    }
+}
+
+impl From<Game<ContreDeclaredState>> for Game<PlayingState> {
+    fn from(prev: Game<ContreDeclaredState>) -> Self {
+        let turn = prev
+            .state
+            .contract
+            .value
+            .first_to_play(prev.first, prev.state.declarer_ind);
+
+        Self {
+            state: PlayingState::new(
+                prev.state.contract,
+                prev.state.declarer_ind,
+                prev.state.player_responses,
+            ),
+            first: prev.first,
+            turn: turn,
+            cards: prev.cards,
+            score: prev.score,
+        }
     }
 }
 
@@ -458,9 +490,4 @@ fn assert_ids_differ(last_declarer_ind: usize, player_ind: usize) {
         last_declarer_ind != player_ind,
         "Player should not be able to respond to his own contre"
     );
-}
-
-fn get_third_ind(ind1: usize, ind2: usize) -> usize {
-    // Indexes can be 0, 1 and 2
-    return 3 - ind1 - ind2;
 }

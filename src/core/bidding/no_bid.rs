@@ -5,6 +5,8 @@ use crate::core::game::Game;
 use crate::core::game::GameError;
 use crate::core::game::GameState;
 use crate::core::types::GameContract;
+use crate::core::types::GameContractData;
+use crate::core::types::GameContractKind;
 
 use super::Bid;
 use super::PlayerBidState;
@@ -183,7 +185,13 @@ impl From<Game<NoBidChoiceState>> for Game<RespondingToContractState> {
         } = prev.state.bid.unwrap();
 
         Self {
-            state: RespondingToContractState::new(contract, declarer_ind),
+            state: RespondingToContractState::new(
+                GameContractData {
+                    value: contract,
+                    kind: GameContractKind::NoBid,
+                },
+                declarer_ind,
+            ),
             first: prev.first,
             turn: prev.turn,
             cards: prev.cards,
