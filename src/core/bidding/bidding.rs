@@ -7,7 +7,7 @@ use crate::core::{
 
 use super::{
     Bid, PlayerBidState,
-    no_bid::NoBidClaimState,
+    no_bid::{NoBidChoiceState, NoBidClaimState},
     share::{count_passed, next_turn, no_bid_exists},
 };
 
@@ -116,31 +116,6 @@ impl Game<BiddingState> {
         self.to_next()
     }
 
-    fn claim_no_bid(mut self) -> GameState {
-        self.state.player_states[self.turn] = PlayerBidState::NoPlayClaim;
-
-        let next_turn = self.next_turn();
-        let bids_turned_to_passes = self.bids_as_passes();
-
-        GameState::NoBidPlayClaim(<Game<NoBidClaimState>>::new(
-            self.first,
-            next_turn,
-            self.cards,
-            self.score,
-            bids_turned_to_passes,
-        ))
-    }
-
-    fn bids_as_passes(&self) -> [PlayerBidState; 3] {
-        self.state.player_states.map(|x| {
-            if let PlayerBidState::Bid(_) = x {
-                PlayerBidState::PassedBid
-            } else {
-                x
-            }
-        })
-    }
-
     fn to_next(self) -> GameState {
         if self.no_bid_exists() {
             return self.to_next_bidding_state();
@@ -196,6 +171,46 @@ impl Game<BiddingState> {
         GameState::Bidding(<Game<BiddingState>>::new(
             self.first + 1,
             Default::default(),
+        ))
+    }
+
+    fn claim_no_bid(mut self) -> GameState {
+        self.state.player_states[self.turn] = PlayerBidState::NoPlayClaim;
+
+        let next_turn = self.next_turn();
+        if next_turn != self.first {
+            self.to_no_bid_play_claim()
+        } else {
+            self.to_no_bid_play_choice()
+        }
+    }
+
+    fn to_no_bid_play_claim(self) -> GameState {
+        let next_turn = self.next_turn();
+        let bids_turned_to_passes = self.bids_as_passes();
+
+        GameState::NoBidPlayClaim(<Game<NoBidClaimState>>::new(
+            self.first,
+            next_turn,
+            self.cards,
+            self.score,
+            bids_turned_to_passes,
+        ))
+    }
+
+    fn bids_as_passes(&self) -> [PlayerBidState; 3] {
+        self.state.player_states.map(|x| {
+            if let PlayerBidState::Bid(_) = x {
+                PlayerBidState::PassedBid
+            } else {
+                x
+            }
+        })
+    }
+
+    fn to_no_bid_play_choice(self) -> GameState {
+        GameState::NoBidPlayChoice(<Game<NoBidChoiceState>>::new(
+            self.first, self.turn, self.cards, self.score, 1,
         ))
     }
 

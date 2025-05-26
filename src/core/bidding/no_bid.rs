@@ -124,7 +124,7 @@ pub struct NoBidChoiceState {
 }
 
 impl Game<NoBidChoiceState> {
-    fn new(
+    pub(super) fn new(
         first: usize,
         turn: usize,
         cards: CardsInPlay,

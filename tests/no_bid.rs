@@ -101,3 +101,21 @@ fn no_bid_choice_can_choose_contract_and_pass() {
         other => panic!("Expected NoBidPlayChoice, got {:?}", other),
     }
 }
+
+#[test]
+fn bid_bid_no_bid_claim() {
+    // Drive into the choice state
+    let actions = vec![
+        GameAction::new(0, GameActionKind::Bid),
+        GameAction::new(1, GameActionKind::Bid),
+        GameAction::new(2, GameActionKind::ClaimNoBid),
+    ];
+    let state = create_state_and_execute_actions(0, actions);
+
+    match state {
+        GameState::NoBidPlayChoice(game) => {
+            assert_eq!(game.contract_bid(), None);
+        }
+        other => panic!("Expected NoBidPlayChoice, got {:?}", other),
+    }
+}
