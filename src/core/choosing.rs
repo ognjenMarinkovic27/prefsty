@@ -104,6 +104,7 @@ impl From<Game<ChoosingCardsState>> for Game<ChoosingContractState> {
             turn: prev.turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -152,6 +153,7 @@ impl From<Game<ChoosingContractState>> for Game<RespondingToContractState> {
             turn: next_turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -286,13 +288,14 @@ impl From<Game<RespondingToContractState>> for Game<HelpOrContreToContractState>
             turn: next_turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
 
 impl From<Game<RespondingToContractState>> for Game<BiddingState> {
     fn from(prev: Game<RespondingToContractState>) -> Self {
-        <Game<BiddingState>>::new_starting_state(turn_inc(prev.first), prev.score)
+        <Game<BiddingState>>::new_starting_state(turn_inc(prev.first), prev.score, prev.refas)
     }
 }
 
@@ -377,6 +380,7 @@ impl From<Game<HelpOrContreToContractState>> for Game<ContreDeclaredState> {
             turn: prev.state.declarer,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -400,6 +404,7 @@ impl From<Game<HelpOrContreToContractState>> for Game<PlayingState> {
             turn: turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -518,6 +523,7 @@ impl From<Game<ContreDeclaredState>> for Game<PlayingState> {
             turn: turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }

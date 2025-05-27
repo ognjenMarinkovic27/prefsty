@@ -1,4 +1,4 @@
-use common::create_state_and_execute_actions;
+use common::{create_state_and_execute_actions, starting_state};
 use prefsty::core::{
     actions::{GameAction, GameActionKind},
     bidding::bidding::BiddingState,
@@ -10,10 +10,7 @@ mod common;
 
 #[test]
 fn validate_bid() {
-    let state = GameState::Bidding(<Game<BiddingState>>::new_starting_state(
-        0,
-        Default::default(),
-    ));
+    let state = starting_state(0, 60);
     let bid_action = GameAction::new(0, GameActionKind::Bid);
 
     let is_valid = state.validate(&bid_action);
@@ -22,10 +19,7 @@ fn validate_bid() {
 
 #[test]
 fn validate_bid_wrong_turn() {
-    let state = GameState::Bidding(<Game<BiddingState>>::new_starting_state(
-        1,
-        Default::default(),
-    ));
+    let state = starting_state(1, 60);
     let bid_action = GameAction::new(0, GameActionKind::Bid);
 
     let is_valid = state.validate(&bid_action);
@@ -34,10 +28,7 @@ fn validate_bid_wrong_turn() {
 
 #[test]
 fn validate_claim_nobid() {
-    let state: GameState = GameState::Bidding(<Game<BiddingState>>::new_starting_state(
-        0,
-        Default::default(),
-    ));
+    let state: GameState = starting_state(0, 60);
 
     let invalid_action = GameAction::new(0, GameActionKind::ClaimNoBid);
     assert_eq!(state.validate(&invalid_action), true);
@@ -45,10 +36,7 @@ fn validate_claim_nobid() {
 
 #[test]
 fn validate_invalid_action_type() {
-    let state = GameState::Bidding(<Game<BiddingState>>::new_starting_state(
-        0,
-        Default::default(),
-    ));
+    let state = starting_state(0, 60);
 
     let invalid_action = GameAction::new(0, GameActionKind::DeclareContre);
     assert_eq!(state.validate(&invalid_action), false);

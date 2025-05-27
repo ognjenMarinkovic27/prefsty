@@ -3,10 +3,16 @@ use crate::core::game::turn_inc;
 use super::PlayerBidState;
 
 pub(super) fn next_turn(current_turn: usize, player_states: &[PlayerBidState]) -> usize {
-    (1..=3)
-        .map(|_| turn_inc(current_turn))
-        .find(|&i| player_states[i] != PlayerBidState::PassedBid)
-        .expect("At least one active player remains")
+    let mut turn = turn_inc(current_turn);
+    for _ in 0..3 {
+        if player_states[turn] != PlayerBidState::PassedBid {
+            return turn;
+        }
+
+        turn = turn_inc(turn);
+    }
+
+    panic!("There should be at least one more person who has not passed bid.");
 }
 
 pub(super) fn count_passed(player_states: &[PlayerBidState]) -> usize {

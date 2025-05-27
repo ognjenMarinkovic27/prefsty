@@ -215,7 +215,11 @@ impl Game<PlayingState> {
         if self.is_hand_over() {
             let first = self.first;
             self.compute_scores();
-            GameState::Bidding(Game::new_starting_state(turn_inc(first), self.score))
+            GameState::Bidding(Game::new_starting_state(
+                turn_inc(first),
+                self.score,
+                self.refas,
+            ))
         } else {
             GameState::Playing(self)
         }
@@ -229,10 +233,16 @@ impl Game<PlayingState> {
     }
 
     fn next_turn(&self) -> usize {
-        (1..=3)
-            .map(|_| turn_inc(self.turn))
-            .find(|&i| self.state.responses[i] != PlayerResponseState::Rejected)
-            .expect("At least one active player remains")
+        let mut turn = turn_inc(self.turn);
+        for _ in 0..3 {
+            if self.state.responses[turn] != PlayerResponseState::Rejected {
+                return turn;
+            }
+
+            turn = turn_inc(turn);
+        }
+
+        panic!("There should be at least one more person who has not passed bid.");
     }
 
     fn compute_scores(&mut self) {

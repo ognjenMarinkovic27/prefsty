@@ -1,7 +1,7 @@
 use crate::core::{
     actions::{GameAction, GameActionKind},
     choosing::ChoosingCardsState,
-    game::{CardsInPlay, Game, GameError, GameState, PlayerScore},
+    game::{CardsInPlay, Game, GameError, GameState, PlayerScore, Refas},
     types::GameContract,
 };
 
@@ -19,8 +19,8 @@ pub struct BiddingState {
 }
 
 impl Game<BiddingState> {
-    pub fn new_starting_state(first: usize, score: [PlayerScore; 3]) -> Self {
-        Game {
+    pub fn new_starting_state(first: usize, score: [PlayerScore; 3], refas: Refas) -> Self {
+        Self {
             state: BiddingState {
                 bid: None,
                 can_steal_bid: false,
@@ -30,6 +30,7 @@ impl Game<BiddingState> {
             turn: first,
             cards: CardsInPlay::deal_random(),
             score,
+            refas,
         }
     }
 
@@ -160,6 +161,7 @@ impl Game<BiddingState> {
         GameState::Bidding(<Game<BiddingState>>::new_starting_state(
             self.first + 1,
             self.score,
+            self.refas,
         ))
     }
 
@@ -199,6 +201,7 @@ impl From<Game<BiddingState>> for Game<ChoosingCardsState> {
             turn: bid.bidder,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -214,6 +217,7 @@ impl From<Game<BiddingState>> for Game<NoBidClaimState> {
             turn: next_turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -226,6 +230,7 @@ impl From<Game<BiddingState>> for Game<NoBidChoiceState> {
             turn: prev.turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }

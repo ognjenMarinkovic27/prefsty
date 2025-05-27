@@ -107,6 +107,7 @@ impl From<Game<NoBidClaimState>> for Game<NoBidChoiceState> {
             turn: next_turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }
@@ -193,6 +194,7 @@ impl From<Game<NoBidChoiceState>> for Game<RespondingToContractState> {
             turn: prev.turn,
             cards: prev.cards,
             score: prev.score,
+            refas: prev.refas,
         }
     }
 }

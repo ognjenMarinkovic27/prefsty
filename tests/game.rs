@@ -4,14 +4,6 @@ use prefsty::core::{
 };
 
 #[test]
-pub fn create_game() {
-    let game = <Game<BiddingState>>::new_starting_state(0, Default::default());
-
-    assert_eq!(game.first, 0);
-    assert_eq!(game.turn, game.first);
-}
-
-#[test]
 pub fn turn_incs() {
     let mut turn = 0;
     for i in 1..=3 {

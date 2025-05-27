@@ -1,4 +1,5 @@
 use rand::{rng, seq::SliceRandom};
+use std::collections::VecDeque;
 
 use super::{
     actions::GameAction,
@@ -25,6 +26,7 @@ impl Room {
                     PlayerScore::new(60),
                     PlayerScore::new(60),
                 ],
+                Refas::new(3),
             )),
         }
     }
@@ -37,6 +39,65 @@ pub struct Game<S> {
     pub turn: usize,
     pub cards: CardsInPlay,
     pub score: [PlayerScore; 3],
+    pub refas: Refas,
+}
+
+#[derive(Debug)]
+pub struct Refas {
+    active: VecDeque<Refa>,
+    left: usize,
+}
+
+impl Refas {
+    pub fn new(num_refas: usize) -> Self {
+        Refas {
+            active: VecDeque::default(),
+            left: num_refas,
+        }
+    }
+
+    pub fn has_refas_left(&self) -> bool {
+        self.left > 0
+    }
+
+    pub fn add_active_refa(&mut self) {
+        self.active.push_back(Refa::default());
+    }
+
+    pub fn has_active_refa(&self, player: usize) -> bool {
+        self.active
+            .iter()
+            .find(|&x| x.used_by[player] == false)
+            .is_some()
+    }
+
+    pub fn mark_active_refa(&mut self, player: usize) {
+        let refa = self.active.iter_mut().find(|x| x.used_by[player] == false);
+
+        if let Some(refa) = refa {
+            refa.mark_used(player);
+
+            if refa.is_done() {
+                self.active.pop_front();
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Refa {
+    used_by: [bool; 3],
+}
+
+impl Refa {
+    pub fn mark_used(&mut self, player: usize) {
+        debug_assert_eq!(self.used_by[player], false, "can't be used twice");
+        self.used_by[player] = true;
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.used_by.iter().all(|&x| x)
+    }
 }
 
 #[derive(Debug)]
