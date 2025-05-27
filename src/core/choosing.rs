@@ -181,6 +181,7 @@ pub enum PlayerResponseState {
     Rejected,
     Caller,
     Called,
+    Contrer,
 }
 
 impl Game<RespondingToContractState> {
@@ -261,8 +262,11 @@ impl Game<RespondingToContractState> {
     }
 
     fn to_new_hand(mut self) -> GameState {
-        self.score[self.state.declarer] =
-            self.score[self.state.declarer].apply_pass(self.state.contract);
+        self.score[self.state.declarer].apply_result(
+            self.state.contract,
+            true,
+            ContreLevel::NoContre,
+        );
 
         GameState::Bidding(self.into())
     }
@@ -341,7 +345,11 @@ impl Game<HelpOrContreToContractState> {
         GameState::Playing(self.into())
     }
 
-    fn declare_contre(self) -> GameState {
+    fn declare_contre(mut self) -> GameState {
+        self.state.player_responses[self.turn] = PlayerResponseState::Contrer;
+        let called = get_third(self.turn, self.state.declarer);
+        self.state.player_responses[called] = PlayerResponseState::Called;
+
         GameState::ContreDeclared(self.into())
     }
 
@@ -384,6 +392,7 @@ impl From<Game<HelpOrContreToContractState>> for Game<PlayingState> {
         Self {
             state: PlayingState::new(
                 prev.state.contract,
+                ContreLevel::NoContre,
                 prev.state.declarer,
                 prev.state.player_responses,
             ),
@@ -414,6 +423,7 @@ impl ContreDeclaredState {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ContreLevel {
+    NoContre,
     Contre,
     Recontre,
     Subcontre,
@@ -423,6 +433,7 @@ pub enum ContreLevel {
 impl ContreLevel {
     fn next(&self) -> Self {
         match self {
+            ContreLevel::NoContre => ContreLevel::Contre,
             ContreLevel::Contre => ContreLevel::Recontre,
             ContreLevel::Recontre => ContreLevel::Subcontre,
             ContreLevel::Subcontre => ContreLevel::FuckYouContre,
@@ -475,6 +486,7 @@ impl Game<ContreDeclaredState> {
         match &self.state.contre_level {
             ContreLevel::Contre | ContreLevel::Subcontre => self.state.declarer,
             ContreLevel::Recontre | ContreLevel::FuckYouContre => self.state.contre_declarer(),
+            _ => panic!("Contre level should not be NoContre"),
         }
     }
 
@@ -498,6 +510,7 @@ impl From<Game<ContreDeclaredState>> for Game<PlayingState> {
         Self {
             state: PlayingState::new(
                 prev.state.contract,
+                prev.state.contre_level,
                 prev.state.declarer,
                 prev.state.player_responses,
             ),

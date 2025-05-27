@@ -133,36 +133,44 @@ impl PlayerScore {
         }
     }
 
-    pub fn apply_pass(mut self, contract: GameContractData) -> Self {
-        self.bulls -= Self::contract_value(contract);
-
-        self
-    }
-
-    pub fn apply_fail(mut self, contract: GameContractData) -> Self {
-        self.bulls += Self::contract_value(contract);
-
-        self
+    pub fn apply_result(
+        &mut self,
+        contract: GameContractData,
+        is_passed: bool,
+        contre: ContreLevel,
+    ) {
+        if is_passed {
+            self.bulls -= Self::contract_value(contract, contre);
+        } else {
+            self.bulls += Self::contract_value(contract, contre);
+        }
     }
 
     pub fn apply_soups(
-        mut self,
+        &mut self,
         contract: GameContractData,
         num_soups: u32,
         soups_ind: usize,
-    ) -> Self {
-        self.soups[soups_ind] += num_soups * Self::contract_value(contract);
-
-        self
+        contre: ContreLevel,
+    ) {
+        self.soups[soups_ind] += num_soups * Self::contract_value(contract, contre);
     }
 
-    fn contract_value(contract: GameContractData) -> u32 {
+    fn contract_value(contract: GameContractData, contre: ContreLevel) -> u32 {
         let contract_value = match contract.kind {
             GameContractKind::Bid => contract.value.numerical_value(),
             GameContractKind::NoBid => contract.value.numerical_value() + 2,
         };
 
-        contract_value * 2
+        let contre_multipler = match contre {
+            ContreLevel::NoContre => 1,
+            ContreLevel::Contre => 2,
+            ContreLevel::Recontre => 4,
+            ContreLevel::Subcontre => 8,
+            ContreLevel::FuckYouContre => 16,
+        };
+
+        contract_value * 2 * contre_multipler
     }
 }
 
