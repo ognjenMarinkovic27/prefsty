@@ -49,9 +49,9 @@ pub struct GameContractData {
 }
 
 impl GameContract {
-    pub fn first_to_play(&self, first: usize, declarer_ind: usize) -> usize {
+    pub fn first_to_play(&self, first: usize, declarer: usize) -> usize {
         match self {
-            GameContract::Sans => turn_dec(declarer_ind),
+            GameContract::Sans => turn_dec(declarer),
             _ => turn_inc(first),
         }
     }

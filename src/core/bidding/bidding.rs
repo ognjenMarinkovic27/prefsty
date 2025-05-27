@@ -35,16 +35,16 @@ impl Game<BiddingState> {
 
     pub fn validate(&self, action: &GameAction) -> bool {
         match action.kind {
-            GameActionKind::Bid | GameActionKind::PassBid => self.validate_bid(action.player_ind),
-            GameActionKind::ClaimNoBid => self.validate_claim_nobid(action.player_ind),
+            GameActionKind::Bid | GameActionKind::PassBid => self.validate_bid(action.player),
+            GameActionKind::ClaimNoBid => self.validate_claim_nobid(action.player),
             _ => false,
         }
     }
 
-    fn validate_bid(&self, player_ind: usize) -> bool {
+    fn validate_bid(&self, player: usize) -> bool {
         if let Some(bid) = &self.state.bid {
             debug_assert!(
-                bid.bidder_ind != player_ind,
+                bid.bidder != player,
                 "Player should not be able to respond to his own bid"
             );
         }
@@ -52,15 +52,12 @@ impl Game<BiddingState> {
         true
     }
 
-    fn validate_claim_nobid(&self, player_ind: usize) -> bool {
-        self.state.player_states[player_ind] == PlayerBidState::NoBid
+    fn validate_claim_nobid(&self, player: usize) -> bool {
+        self.state.player_states[player] == PlayerBidState::NoBid
     }
 
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        debug_assert!(
-            self.turn == action.player_ind,
-            "Should be validated beforehand",
-        );
+        debug_assert!(self.turn == action.player, "Should be validated beforehand",);
 
         match action.kind {
             GameActionKind::Bid => Ok(self.bid()),
@@ -84,15 +81,15 @@ impl Game<BiddingState> {
     }
 
     fn register_bid(mut self) -> Self {
-        let bidder_ind = self.turn;
+        let bidder = self.turn;
         let bid_value = self.next_bid_value();
 
         self.state.can_steal_bid = false;
-        self.state.player_states[bidder_ind] = PlayerBidState::Bid(bid_value);
+        self.state.player_states[bidder] = PlayerBidState::Bid(bid_value);
 
         self.state.bid = Some(Bid {
             value: bid_value,
-            bidder_ind,
+            bidder,
         });
 
         self
@@ -199,7 +196,7 @@ impl From<Game<BiddingState>> for Game<ChoosingCardsState> {
         Self {
             state: ChoosingCardsState::new(bid.value),
             first: prev.first,
-            turn: bid.bidder_ind,
+            turn: bid.bidder,
             cards: prev.cards,
             score: prev.score,
         }

@@ -16,5 +16,5 @@ enum PlayerBidState {
 #[derive(Debug)]
 pub struct Bid {
     value: GameContract,
-    bidder_ind: usize,
+    bidder: usize,
 }

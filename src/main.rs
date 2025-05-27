@@ -7,7 +7,7 @@ fn main() {
     let room = Room::new();
 
     let action = GameAction {
-        player_ind: 0,
+        player: 0,
         kind: GameActionKind::Bid,
     };
     let res = room.game.validate(&action);

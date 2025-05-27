@@ -6,14 +6,14 @@ use crate::core::{
 use super::{
     actions::{GameAction, GameActionKind},
     choosing::PlayerResponseState,
-    game::{Game, GameError, GameState, PlayerScore, get_third_ind, turn_inc},
+    game::{Game, GameError, GameState, PlayerScore, get_third, turn_inc},
     types::GameContractData,
 };
 
 #[derive(Debug)]
 pub struct PlayingState {
     contract: GameContractData,
-    declarer_ind: usize,
+    declarer: usize,
     player_responses: [PlayerResponseState; 3],
     round_wins: [u32; 3],
     round_state: RoundState,
@@ -22,12 +22,12 @@ pub struct PlayingState {
 impl PlayingState {
     pub fn new(
         contract: GameContractData,
-        declarer_ind: usize,
+        declarer: usize,
         player_responses: [PlayerResponseState; 3],
     ) -> Self {
         Self {
             contract,
-            declarer_ind,
+            declarer,
             player_responses,
             round_wins: Default::default(),
             round_state: RoundState::default(),
@@ -67,7 +67,7 @@ impl RoundState {
         true
     }
 
-    fn round_winner_ind(self, trump: Option<CardSuit>) -> usize {
+    fn round_winner(self, trump: Option<CardSuit>) -> usize {
         if let Some(trump_suit) = trump {
             let trump_winner = self.winner_in_suit(trump_suit);
 
@@ -95,13 +95,13 @@ impl RoundState {
             .map(|(index, _)| index)
     }
 
-    fn play_card(mut self, card: Card, player_ind: usize) -> Self {
+    fn play_card(mut self, card: Card, player: usize) -> Self {
         debug_assert_eq!(
-            self.played_cards[player_ind], None,
+            self.played_cards[player], None,
             "Should not be able to play card twice"
         );
 
-        self.played_cards[player_ind] = Some(card);
+        self.played_cards[player] = Some(card);
         if self.suit.is_none() {
             self.suit = Some(card.suit)
         }
@@ -113,27 +113,27 @@ impl RoundState {
 impl Game<PlayingState> {
     pub fn validate(&self, action: &GameAction) -> bool {
         match action.kind {
-            GameActionKind::PlayCard(card) => self.validate_play_card(action.player_ind, card),
+            GameActionKind::PlayCard(card) => self.validate_play_card(action.player, card),
             _ => false,
         }
     }
 
-    fn validate_play_card(&self, player_ind: usize, card: Card) -> bool {
-        if !self.player_has_card(player_ind, card) {
+    fn validate_play_card(&self, player: usize, card: Card) -> bool {
+        if !self.player_has_card(player, card) {
             return false;
         }
 
         if self.no_cards_played() || self.is_round_suit(card) {
             return true;
-        } else if self.has_trump(player_ind) {
+        } else if self.has_trump(player) {
             return self.is_trump(card);
         }
 
         true
     }
 
-    fn player_has_card(&self, player_ind: usize, card: Card) -> bool {
-        self.cards.hands[player_ind].contains(&card)
+    fn player_has_card(&self, player: usize, card: Card) -> bool {
+        self.cards.hands[player].contains(&card)
     }
 
     fn no_cards_played(&self) -> bool {
@@ -159,9 +159,9 @@ impl Game<PlayingState> {
         }
     }
 
-    fn has_trump(&self, player_ind: usize) -> bool {
+    fn has_trump(&self, player: usize) -> bool {
         if let Some(trump_suit) = self.state.trump().as_ref() {
-            let trump_card = self.cards.hands[player_ind]
+            let trump_card = self.cards.hands[player]
                 .iter()
                 .find(|card| card.suit == *trump_suit);
 
@@ -221,14 +221,14 @@ impl Game<PlayingState> {
     }
 
     fn calculate_new_scores(mut self) -> [PlayerScore; 3] {
-        self.score[self.state.declarer_ind] =
-            self.updated_declarer_score(self.score[self.state.declarer_ind]);
+        self.score[self.state.declarer] =
+            self.updated_declarer_score(self.score[self.state.declarer]);
 
-        let goer1_ind = turn_inc(self.state.declarer_ind);
-        let goer2_ind = turn_inc(goer1_ind);
+        let goer1 = turn_inc(self.state.declarer);
+        let goer2 = turn_inc(goer1);
 
-        self.score[goer1_ind] = self.updated_goer_score(goer1_ind, self.score[goer1_ind]);
-        self.score[goer2_ind] = self.updated_goer_score(goer2_ind, self.score[goer2_ind]);
+        self.score[goer1] = self.updated_goer_score(goer1, self.score[goer1]);
+        self.score[goer2] = self.updated_goer_score(goer2, self.score[goer2]);
 
         self.score
     }
@@ -242,23 +242,23 @@ impl Game<PlayingState> {
     }
 
     fn declarer_passed(&self) -> bool {
-        self.state.round_wins[self.state.declarer_ind] >= 6
+        self.state.round_wins[self.state.declarer] >= 6
     }
 
-    fn updated_goer_score(&self, goer_ind: usize, goer_score: PlayerScore) -> PlayerScore {
-        if self.state.player_responses[goer_ind] == PlayerResponseState::Called {
+    fn updated_goer_score(&self, goer: usize, goer_score: PlayerScore) -> PlayerScore {
+        if self.state.player_responses[goer] == PlayerResponseState::Called {
             return goer_score;
         }
 
-        if self.goer_passed(goer_ind) {
+        if self.goer_passed(goer) {
             let goer_score = goer_score.apply_soups(
                 self.state.contract,
-                self.state.round_wins[goer_ind],
-                self.soups_ind(goer_ind),
+                self.state.round_wins[goer],
+                self.soups(goer),
             );
 
-            if self.state.player_responses[goer_ind] == PlayerResponseState::Caller {
-                self.caller_goer_score(goer_ind, goer_score)
+            if self.state.player_responses[goer] == PlayerResponseState::Caller {
+                self.caller_goer_score(goer, goer_score)
             } else {
                 goer_score
             }
@@ -267,30 +267,26 @@ impl Game<PlayingState> {
         }
     }
 
-    fn caller_goer_score(&self, goer_ind: usize, goer_score: PlayerScore) -> PlayerScore {
-        let goer2_ind = get_third_ind(goer_ind, self.state.declarer_ind);
+    fn caller_goer_score(&self, goer: usize, goer_score: PlayerScore) -> PlayerScore {
+        let goer2 = get_third(goer, self.state.declarer);
         goer_score.apply_soups(
             self.state.contract,
-            self.state.round_wins[goer2_ind],
-            self.soups_ind(goer_ind),
+            self.state.round_wins[goer2],
+            self.soups(goer),
         )
     }
 
-    fn soups_ind(&self, goer_ind: usize) -> usize {
-        let goer2_ind = get_third_ind(goer_ind, self.state.declarer_ind);
+    fn soups(&self, goer: usize) -> usize {
+        let goer2 = get_third(goer, self.state.declarer);
 
-        if self.state.declarer_ind > goer2_ind {
-            1
-        } else {
-            0
-        }
+        if self.state.declarer > goer2 { 1 } else { 0 }
     }
 
-    fn goer_passed(&self, goer_ind: usize) -> bool {
-        let goer2_ind = get_third_ind(self.state.declarer_ind, goer_ind);
+    fn goer_passed(&self, goer: usize) -> bool {
+        let goer2 = get_third(self.state.declarer, goer);
 
-        self.state.round_wins[goer_ind] >= 2
-            || self.state.round_wins[goer_ind] + self.state.round_wins[goer2_ind] >= 4
+        self.state.round_wins[goer] >= 2
+            || self.state.round_wins[goer] + self.state.round_wins[goer2] >= 4
     }
 
     fn is_hand_over(&self) -> bool {
@@ -299,7 +295,7 @@ impl Game<PlayingState> {
 
     fn register_win_and_reset_round(mut self) -> Self {
         let trump = self.state.trump();
-        let round_winner = self.state.round_state.round_winner_ind(trump);
+        let round_winner = self.state.round_state.round_winner(trump);
         self.state.round_wins[round_winner] += 1;
         self.state.round_state = RoundState::default();
 

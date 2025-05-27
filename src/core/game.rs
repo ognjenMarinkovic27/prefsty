@@ -168,11 +168,11 @@ impl PlayerScore {
 
 impl<StateType> Game<StateType> {
     pub fn validate_turn(&self, action: &GameAction) -> bool {
-        self.is_player_turn(action.player_ind)
+        self.is_player_turn(action.player)
     }
 
-    fn is_player_turn(&self, player_ind: usize) -> bool {
-        return self.turn == player_ind;
+    fn is_player_turn(&self, player: usize) -> bool {
+        return self.turn == player;
     }
 }
 
@@ -235,7 +235,7 @@ pub enum GameError {
     InvalidAction,
 }
 
-pub fn get_third_ind(ind1: usize, ind2: usize) -> usize {
+pub fn get_third(ind1: usize, ind2: usize) -> usize {
     // Indexes can be 0, 1 and 2
     return 3 - ind1 - ind2;
 }

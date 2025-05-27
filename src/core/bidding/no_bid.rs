@@ -27,7 +27,7 @@ impl Game<NoBidClaimState> {
     pub fn validate(&self, action: &GameAction) -> bool {
         match action.kind {
             GameActionKind::ClaimNoBid => {
-                self.state.player_states[action.player_ind] == PlayerBidState::NoBid
+                self.state.player_states[action.player] == PlayerBidState::NoBid
             }
             GameActionKind::PassBid => true,
             _ => false,
@@ -35,10 +35,7 @@ impl Game<NoBidClaimState> {
     }
 
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        debug_assert!(
-            self.turn == action.player_ind,
-            "Should be validated beforehand",
-        );
+        debug_assert!(self.turn == action.player, "Should be validated beforehand",);
 
         match action.kind {
             GameActionKind::ClaimNoBid => Ok(self.claim_no_bid()),
@@ -152,7 +149,7 @@ impl Game<NoBidChoiceState> {
     fn choose_no_bid(mut self, contract: GameContract) -> GameState {
         self.state.bid = Some(Bid {
             value: contract,
-            bidder_ind: self.turn,
+            bidder: self.turn,
         });
 
         self.to_next()
@@ -181,7 +178,7 @@ impl From<Game<NoBidChoiceState>> for Game<RespondingToContractState> {
     fn from(prev: Game<NoBidChoiceState>) -> Self {
         let Bid {
             value: contract,
-            bidder_ind: declarer_ind,
+            bidder: declarer,
         } = prev.state.bid.unwrap();
 
         Self {
@@ -190,7 +187,7 @@ impl From<Game<NoBidChoiceState>> for Game<RespondingToContractState> {
                     value: contract,
                     kind: GameContractKind::NoBid,
                 },
-                declarer_ind,
+                declarer,
             ),
             first: prev.first,
             turn: prev.turn,
