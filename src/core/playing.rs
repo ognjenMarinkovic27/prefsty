@@ -10,7 +10,9 @@ use super::{
     types::GameContractData,
 };
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PlayingState {
     contract: GameContractData,
     contre_level: ContreLevel,
@@ -64,7 +66,7 @@ impl PlayingState {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct RoundState {
     played: [Option<Card>; 3],
     lead_suit: Option<CardSuit>,

@@ -4,7 +4,9 @@ mod share;
 
 use super::types::GameContract;
 
-#[derive(Debug, Default, PartialEq, PartialOrd, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone, Copy, Deserialize, Serialize)]
 enum PlayerBidState {
     #[default]
     NoBid,
@@ -13,7 +15,7 @@ enum PlayerBidState {
     NoPlayClaim,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Bid {
     value: GameContract,
     bidder: usize,

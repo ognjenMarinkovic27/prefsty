@@ -12,6 +12,8 @@ use super::{
     types::{Card, CardSuit, CardValue, GameContractData, GameContractKind},
 };
 
+use serde::{Deserialize, Serialize};
+
 pub struct Room {
     pub game: GameState,
 }
@@ -32,7 +34,7 @@ impl Room {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Game<S> {
     pub state: S,
     pub first: usize,
@@ -42,7 +44,7 @@ pub struct Game<S> {
     pub refas: Refas,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Refas {
     active: VecDeque<Refa>,
     left: usize,
@@ -84,7 +86,7 @@ impl Refas {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Refa {
     used_by: [bool; 3],
 }
@@ -100,7 +102,7 @@ impl Refa {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CardsInPlay {
     pub hands: [Vec<Card>; 3],
     pub hidden: [Card; 2],
@@ -180,7 +182,7 @@ impl CardsInPlay {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize)]
 pub struct PlayerScore {
     bulls: u32,
     soups: [u32; 2],
@@ -253,7 +255,7 @@ pub fn turn_dec(turn: usize) -> usize {
     (turn + 2) % 3
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum GameState {
     Bidding(Game<BiddingState>),
     NoBidPlayClaim(Game<NoBidClaimState>),

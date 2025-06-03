@@ -1,12 +1,13 @@
 use super::game::{turn_dec, turn_inc};
+use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Card {
     pub suit: CardSuit,
     pub value: CardValue,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum CardSuit {
     Spades,
     Diamonds,
@@ -14,7 +15,7 @@ pub enum CardSuit {
     Clubs,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Eq, Ord)]
+#[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Eq, Ord, Deserialize, Serialize)]
 pub enum CardValue {
     Seven,
     Eight,
@@ -26,7 +27,7 @@ pub enum CardValue {
     Ace,
 }
 
-#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum GameContract {
     Spades = 2,
     Diamonds = 3,
@@ -36,13 +37,13 @@ pub enum GameContract {
     Sans = 7,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum GameContractKind {
     Bid,
     NoBid,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct GameContractData {
     pub value: GameContract,
     pub kind: GameContractKind,

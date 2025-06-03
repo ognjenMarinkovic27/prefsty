@@ -12,7 +12,9 @@ use super::Bid;
 use super::PlayerBidState;
 use super::share::next_turn;
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NoBidClaimState {
     player_states: [PlayerBidState; 3],
 }
@@ -112,7 +114,7 @@ impl From<Game<NoBidClaimState>> for Game<NoBidChoiceState> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NoBidChoiceState {
     bid: Option<Bid>,
     claims: usize,

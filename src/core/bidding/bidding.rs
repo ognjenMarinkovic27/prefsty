@@ -11,7 +11,9 @@ use super::{
     share::{count_passed, next_turn, no_bid_exists},
 };
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BiddingState {
     bid: Option<Bid>,
     can_steal_bid: bool,

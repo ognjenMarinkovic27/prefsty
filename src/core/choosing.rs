@@ -6,7 +6,9 @@ use super::{
     types::{Card, GameContract, GameContractData, GameContractKind},
 };
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChoosingCardsState {
     contract_bid: GameContract,
 }
@@ -109,7 +111,7 @@ impl From<Game<ChoosingCardsState>> for Game<ChoosingContractState> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChoosingContractState {
     contract_bid: GameContract,
 }
@@ -158,7 +160,7 @@ impl From<Game<ChoosingContractState>> for Game<RespondingToContractState> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RespondingToContractState {
     contract: GameContractData,
     declarer: usize,
@@ -175,7 +177,7 @@ impl RespondingToContractState {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum PlayerResponseState {
     #[default]
     NoResponse,
@@ -299,7 +301,7 @@ impl From<Game<RespondingToContractState>> for Game<BiddingState> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct HelpOrContreToContractState {
     contract: GameContractData,
     declarer: usize,
@@ -409,7 +411,7 @@ impl From<Game<HelpOrContreToContractState>> for Game<PlayingState> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ContreDeclaredState {
     contract: GameContractData,
     declarer: usize,
@@ -426,7 +428,7 @@ impl ContreDeclaredState {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Deserialize, Serialize)]
 pub enum ContreLevel {
     NoContre,
     Contre,
