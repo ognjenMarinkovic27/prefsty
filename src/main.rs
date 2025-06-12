@@ -1,15 +1,12 @@
-use prefsty::core::{
-    actions::{GameAction, GameActionKind},
-    game::Room,
-};
+use prefsty::persistence::PgDB;
+use sqlx::PgPool;
 
-fn main() {
-    let room = Room::new();
+#[tokio::main]
+async fn main() -> Result<(), sqlx::Error> {
+    let db_url = env::var("DATABASE_URL").expect("Provide a DATABASE_URL to run prefsty");
 
-    let action = GameAction {
-        player: 0,
-        kind: GameActionKind::Bid,
-    };
-    let res = room.game.validate(&action);
-    assert_eq!(res, true);
+    let pool = PgPool::connect(&db_url).await?;
+    let db = PgDB::new(pool);
+
+    Ok(())
 }
