@@ -18,22 +18,6 @@ pub struct Room {
     pub game: GameState,
 }
 
-impl Room {
-    pub fn new() -> Self {
-        Room {
-            game: GameState::Bidding(<Game<BiddingState>>::new_starting_state(
-                0,
-                [
-                    PlayerScore::new(60),
-                    PlayerScore::new(60),
-                    PlayerScore::new(60),
-                ],
-                Refas::new(3),
-            )),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Game<S> {
     pub state: S,
@@ -189,7 +173,7 @@ pub struct PlayerScore {
 }
 
 impl PlayerScore {
-    fn new(bulls: u32) -> Self {
+    pub fn new(bulls: u32) -> Self {
         Self {
             bulls,
             soups: [0; 2],
@@ -238,8 +222,12 @@ impl PlayerScore {
 }
 
 impl<StateType> Game<StateType> {
-    pub fn validate_turn(&self, action: &GameAction) -> bool {
-        self.is_player_turn(action.player)
+    pub fn validate_turn(&self, action: &GameAction) -> Result<(), GameError> {
+        if self.is_player_turn(action.player) {
+            Ok(())
+        } else {
+            Err(GameError::InvalidTurn)
+        }
     }
 
     fn is_player_turn(&self, player: usize) -> bool {
@@ -269,23 +257,6 @@ pub enum GameState {
 }
 
 impl GameState {
-    // Does this have to be so ugly?
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match self {
-            Self::Bidding(game) => game.validate_turn(action) && game.validate(action),
-            Self::NoBidPlayClaim(game) => game.validate_turn(action) && game.validate(action),
-            Self::NoBidPlayChoice(game) => game.validate_turn(action) && game.validate(action),
-            Self::ChoosingCards(game) => game.validate_turn(action) && game.validate(action),
-            Self::ChoosingContract(game) => game.validate_turn(action) && game.validate(action),
-            Self::RespondingToContract(game) => game.validate_turn(action) && game.validate(action),
-            Self::HelpOrContreToContract(game) => {
-                game.validate_turn(action) && game.validate(action)
-            }
-            Self::ContreDeclared(game) => game.validate_turn(action) && game.validate(action),
-            Self::Playing(game) => game.validate_turn(action) && game.validate(action),
-        }
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
         match self {
             GameState::Bidding(game) => game.apply(action),
@@ -304,6 +275,8 @@ impl GameState {
 #[derive(Debug)]
 pub enum GameError {
     InvalidAction,
+    BadAction,
+    InvalidTurn,
 }
 
 pub fn get_third(ind1: usize, ind2: usize) -> usize {

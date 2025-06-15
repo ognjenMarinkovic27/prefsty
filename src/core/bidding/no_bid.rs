@@ -127,25 +127,43 @@ impl NoBidChoiceState {
 }
 
 impl Game<NoBidChoiceState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match action.kind {
-            GameActionKind::ChooseNoBidContract(contract) => {
-                if let Some(current_contract) = &self.state.bid {
-                    contract > current_contract.value
-                } else {
-                    true
-                }
-            }
-            GameActionKind::PassBid => self.state.bid.is_some(),
-            _ => false,
-        }
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
         match action.kind {
             GameActionKind::ChooseNoBidContract(contract) => Ok(self.choose_no_bid(contract)),
             GameActionKind::PassBid => Ok(self.pass_bid()),
             _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match action.kind {
+            GameActionKind::ChooseNoBidContract(contract) => self.validate_choose_no_bid(contract),
+            GameActionKind::PassBid => self.validate_pass_bid(),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_choose_no_bid(&self, contract: GameContract) -> Result<(), GameError> {
+        if let Some(current_contract) = &self.state.bid {
+            if contract > current_contract.value {
+                Ok(())
+            } else {
+                Err(GameError::BadAction)
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn validate_pass_bid(&self) -> Result<(), GameError> {
+        if self.state.bid.is_some() {
+            Ok(())
+        } else {
+            Err(GameError::BadAction)
         }
     }
 

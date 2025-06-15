@@ -21,6 +21,18 @@ pub struct BiddingState {
 }
 
 impl Game<BiddingState> {
+    pub fn new(first: usize, starting_score: u32, num_refas: usize) -> Self {
+        <Game<BiddingState>>::new_starting_state(
+            first,
+            [
+                PlayerScore::new(starting_score),
+                PlayerScore::new(starting_score),
+                PlayerScore::new(starting_score),
+            ],
+            Refas::new(num_refas),
+        )
+    }
+
     pub fn new_starting_state(first: usize, score: [PlayerScore; 3], refas: Refas) -> Self {
         Self {
             state: BiddingState {
@@ -36,15 +48,30 @@ impl Game<BiddingState> {
         }
     }
 
-    pub fn validate(&self, action: &GameAction) -> bool {
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        debug_assert!(self.turn == action.player, "Should be validated beforehand");
+
+        self.validate(&action)?;
+
         match action.kind {
-            GameActionKind::Bid | GameActionKind::PassBid => self.validate_bid(action.player),
-            GameActionKind::ClaimNoBid => self.validate_claim_nobid(action.player),
-            _ => false,
+            GameActionKind::Bid => Ok(self.bid()),
+            GameActionKind::PassBid => Ok(self.pass_bid()),
+            GameActionKind::ClaimNoBid => Ok(self.claim_no_bid()),
+            _ => Err(GameError::InvalidAction),
         }
     }
 
-    fn validate_bid(&self, player: usize) -> bool {
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match action.kind {
+            GameActionKind::Bid | GameActionKind::PassBid => self.validate_bid(action.player),
+            GameActionKind::ClaimNoBid => self.validate_claim_nobid(action.player),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_bid(&self, player: usize) -> Result<(), GameError> {
         if let Some(bid) = &self.state.bid {
             debug_assert!(
                 bid.bidder != player,
@@ -52,21 +79,14 @@ impl Game<BiddingState> {
             );
         }
 
-        true
+        Ok(())
     }
 
-    fn validate_claim_nobid(&self, player: usize) -> bool {
-        self.state.player_states[player] == PlayerBidState::NoBid
-    }
-
-    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        debug_assert!(self.turn == action.player, "Should be validated beforehand",);
-
-        match action.kind {
-            GameActionKind::Bid => Ok(self.bid()),
-            GameActionKind::PassBid => Ok(self.pass_bid()),
-            GameActionKind::ClaimNoBid => Ok(self.claim_no_bid()),
-            _ => Err(GameError::InvalidAction),
+    fn validate_claim_nobid(&self, player: usize) -> Result<(), GameError> {
+        if self.state.player_states[player] == PlayerBidState::NoBid {
+            Ok(())
+        } else {
+            Err(GameError::BadAction)
         }
     }
 

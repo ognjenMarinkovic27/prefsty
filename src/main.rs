@@ -1,5 +1,13 @@
-use prefsty::persistence::PgDB;
+use prefsty::{
+    core::{
+        actions::{GameAction, GameActionKind},
+        bidding::bidding::BiddingState,
+        game::{Game, GameState},
+    },
+    persistence::{PgDB, model::GameModel},
+};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -7,6 +15,23 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let pool = PgPool::connect(&db_url).await?;
     let db = PgDB::new(pool);
+
+    let uuid = Uuid::new_v4();
+
+    let game_model = GameModel {
+        id: uuid,
+        state: GameState::Bidding(<Game<BiddingState>>::new(0, 60, 3)),
+    };
+
+    db.create_game(game_model).await.unwrap();
+
+    let game_model = db.load_game(uuid).await.unwrap();
+    let game = game_model.state;
+    game.apply(GameAction {
+        player: 0,
+        kind: GameActionKind::Bid,
+    })
+    .expect("should be able to bid");
 
     Ok(())
 }

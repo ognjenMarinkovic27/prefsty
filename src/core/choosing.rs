@@ -20,27 +20,38 @@ impl ChoosingCardsState {
 }
 
 impl Game<ChoosingCardsState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match &action.kind {
-            GameActionKind::ChooseCards(choice) => self.validate_choose_cards(choice),
-            _ => false,
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
+        match action.kind {
+            GameActionKind::ChooseCards(choice) => Ok(self.take_chosen_cards(choice)),
+            _ => Err(GameError::InvalidAction),
         }
     }
 
-    fn validate_choose_cards(&self, choice: &CardChoice) -> bool {
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match &action.kind {
+            GameActionKind::ChooseCards(choice) => self.validate_choose_cards(choice),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_choose_cards(&self, choice: &CardChoice) -> Result<(), GameError> {
         if choice.take_cards.len() == choice.discard_cards.len() {
-            return false;
+            return Err(GameError::BadAction);
         }
 
         if !self.hidden_cards_contain_take(&choice.take_cards) {
-            return false;
+            return Err(GameError::BadAction);
         }
 
         if !self.hand_cards_contain_discard(&choice.discard_cards) {
-            return false;
+            return Err(GameError::BadAction);
         }
 
-        true
+        Ok(())
     }
 
     fn hidden_cards_contain_take(&self, take_cards: &[Card]) -> bool {
@@ -60,13 +71,6 @@ impl Game<ChoosingCardsState> {
         }
 
         true
-    }
-
-    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        match action.kind {
-            GameActionKind::ChooseCards(choice) => Ok(self.take_chosen_cards(choice)),
-            _ => Err(GameError::InvalidAction),
-        }
     }
 
     pub fn take_chosen_cards(mut self, choice: CardChoice) -> GameState {
@@ -117,17 +121,29 @@ pub struct ChoosingContractState {
 }
 
 impl Game<ChoosingContractState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match &action.kind {
-            GameActionKind::ChooseContract(contract) => *contract > self.state.contract_bid,
-            _ => false,
-        }
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
         match action.kind {
             GameActionKind::ChooseContract(contract) => Ok(self.choose_contract(contract)),
             _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match &action.kind {
+            GameActionKind::ChooseContract(contract) => self.validate_choose_contract(contract),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_choose_contract(&self, contract: &GameContract) -> Result<(), GameError> {
+        if *contract > self.state.contract_bid {
+            Ok(())
+        } else {
+            Err(GameError::BadAction)
         }
     }
 
@@ -189,30 +205,34 @@ pub enum PlayerResponseState {
 }
 
 impl Game<RespondingToContractState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        use GameActionKind::*;
-        match &action.kind {
-            AcceptContract | RejectContract => self.validate_response(action.player),
-            _ => false,
-        }
-    }
-
-    fn validate_response(&self, player: usize) -> bool {
-        debug_assert!(
-            self.state.declarer != player,
-            "Player should not be responding to his own contract"
-        );
-
-        true
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
         use GameActionKind::*;
         match action.kind {
             AcceptContract => Ok(self.accept_contract()),
             RejectContract => Ok(self.reject_contract()),
             _ => Err(GameError::InvalidAction),
         }
+    }
+
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        use GameActionKind::*;
+        match &action.kind {
+            AcceptContract | RejectContract => self.validate_response(action.player),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_response(&self, player: usize) -> Result<(), GameError> {
+        debug_assert!(
+            self.state.declarer != player,
+            "Player should not be responding to his own contract"
+        );
+
+        Ok(())
     }
 
     fn accept_contract(mut self) -> GameState {
@@ -309,37 +329,45 @@ pub struct HelpOrContreToContractState {
 }
 
 impl Game<HelpOrContreToContractState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match &action.kind {
-            GameActionKind::CallForHelp => self.validate_call_for_help(action.player),
-            GameActionKind::DeclareContre => self.validate_declare_contre(action.player),
-            GameActionKind::PassHelpContre => self.validate_pass_help_contre(),
-            _ => false,
-        }
-    }
-
-    fn validate_call_for_help(&self, player: usize) -> bool {
-        let teammate = get_third(player, self.state.declarer);
-        self.state.player_responses[teammate] == PlayerResponseState::Rejected
-    }
-
-    fn validate_declare_contre(&self, player: usize) -> bool {
-        assert_ids_differ(self.state.declarer, player);
-
-        true
-    }
-
-    fn validate_pass_help_contre(&self) -> bool {
-        true
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
         match &action.kind {
             GameActionKind::CallForHelp => Ok(self.call_for_help()),
             GameActionKind::DeclareContre => Ok(self.declare_contre()),
             GameActionKind::PassHelpContre => Ok(self.pass_help_contre()),
             _ => Err(GameError::InvalidAction),
         }
+    }
+
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match &action.kind {
+            GameActionKind::CallForHelp => self.validate_call_for_help(action.player),
+            GameActionKind::DeclareContre => self.validate_declare_contre(action.player),
+            GameActionKind::PassHelpContre => self.validate_pass_help_contre(),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_call_for_help(&self, player: usize) -> Result<(), GameError> {
+        let teammate = get_third(player, self.state.declarer);
+        if self.state.player_responses[teammate] == PlayerResponseState::Rejected {
+            Ok(())
+        } else {
+            Err(GameError::BadAction)
+        }
+    }
+
+    fn validate_declare_contre(&self, player: usize) -> Result<(), GameError> {
+        assert_ids_differ(self.state.declarer, player);
+
+        Ok(())
+    }
+
+    fn validate_pass_help_contre(&self) -> Result<(), GameError> {
+        Ok(())
     }
 
     fn call_for_help(mut self) -> GameState {
@@ -450,32 +478,36 @@ impl ContreLevel {
 }
 
 impl Game<ContreDeclaredState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match action.kind {
-            GameActionKind::DeclareContre => self.validate_declare_contre(action.player),
-            GameActionKind::PassHelpContre => self.validate_pass_help_contre(),
-            _ => false,
-        }
-    }
-
-    fn validate_declare_contre(&self, player: usize) -> bool {
-        let last_declarer_id = self.last_declarer_id();
-
-        assert_ids_differ(last_declarer_id, player);
-
-        true
-    }
-
-    fn validate_pass_help_contre(&self) -> bool {
-        true
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
         match action.kind {
             GameActionKind::DeclareContre => Ok(self.apply_declare_contre()),
             GameActionKind::PassHelpContre => Ok(self.apply_pass_help_contre()),
             _ => Err(GameError::InvalidAction),
         }
+    }
+
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match action.kind {
+            GameActionKind::DeclareContre => self.validate_declare_contre(action.player),
+            GameActionKind::PassHelpContre => self.validate_pass_help_contre(),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_declare_contre(&self, player: usize) -> Result<(), GameError> {
+        let last_declarer_id = self.last_declarer_id();
+
+        assert_ids_differ(last_declarer_id, player);
+
+        Ok(())
+    }
+
+    fn validate_pass_help_contre(&self) -> Result<(), GameError> {
+        Ok(())
     }
 
     fn apply_declare_contre(mut self) -> GameState {

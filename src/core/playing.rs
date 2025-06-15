@@ -114,25 +114,36 @@ impl RoundState {
 }
 
 impl Game<PlayingState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
+    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
+        self.validate(&action)?;
+
         match action.kind {
-            GameActionKind::PlayCard(card) => self.validate_play_card(action.player, card),
-            _ => false,
+            GameActionKind::PlayCard(card) => Ok(self.play_card(card)),
+            _ => Err(GameError::InvalidAction),
         }
     }
 
-    fn validate_play_card(&self, player: usize, card: Card) -> bool {
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match action.kind {
+            GameActionKind::PlayCard(card) => self.validate_play_card(action.player, card),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate_play_card(&self, player: usize, card: Card) -> Result<(), GameError> {
         if !self.player_has_card(player, card) {
-            return false;
+            return Err(GameError::BadAction);
         }
 
         if self.no_cards_played() || self.is_round_suit(card) {
-            return true;
+            return Ok(());
         } else if self.has_trump(player) {
-            return self.is_trump(card);
+            return self.validate_trump(card);
         }
 
-        true
+        Ok(())
     }
 
     fn player_has_card(&self, player: usize, card: Card) -> bool {
@@ -174,18 +185,15 @@ impl Game<PlayingState> {
         }
     }
 
-    fn is_trump(&self, card: Card) -> bool {
+    fn validate_trump(&self, card: Card) -> Result<(), GameError> {
         if let Some(trump_suit) = self.state.trump().as_ref() {
-            *trump_suit == card.suit
+            if *trump_suit == card.suit {
+                Ok(())
+            } else {
+                Err(GameError::BadAction)
+            }
         } else {
-            false
-        }
-    }
-
-    pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        match action.kind {
-            GameActionKind::PlayCard(card) => Ok(self.play_card(card)),
-            _ => Err(GameError::InvalidAction),
+            Err(GameError::BadAction)
         }
     }
 
