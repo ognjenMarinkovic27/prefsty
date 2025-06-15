@@ -283,3 +283,7 @@ pub fn get_third(ind1: usize, ind2: usize) -> usize {
     // Indexes can be 0, 1 and 2
     return 3 - ind1 - ind2;
 }
+
+pub fn new_game(first: usize, starting_score: u32, num_refas: usize) -> GameState {
+    GameState::Bidding(<Game<BiddingState>>::new(first, starting_score, num_refas))
+}

@@ -2,7 +2,7 @@ use prefsty::{
     core::{
         actions::{GameAction, GameActionKind},
         bidding::bidding::BiddingState,
-        game::{Game, GameState},
+        game::{Game, GameState, new_game},
     },
     persistence::{PgDB, model::GameModel},
 };
@@ -20,7 +20,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let game_model = GameModel {
         id: uuid,
-        state: GameState::Bidding(<Game<BiddingState>>::new(0, 60, 3)),
+        state: new_game(0, 120, 2),
     };
 
     db.create_game(game_model).await.unwrap();
