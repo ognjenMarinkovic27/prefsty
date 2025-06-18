@@ -1,5 +1,7 @@
-CREATE TABLE IF NOT EXISTS joined (
-    game_id UUID NOT NULL REFERENCES games(id),
-    user_id UUID NOT NULL REFERENCES users(id),
-    PRIMARY KEY (game_id, user_id)
-)
+CREATE TABLE joined (
+  game_id UUID     NOT NULL,
+  idx     SMALLINT NOT NULL,
+  user_id UUID     NULL,
+  PRIMARY KEY (game_id, idx),
+  UNIQUE     (game_id, user_id)
+);

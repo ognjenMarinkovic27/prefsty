@@ -11,7 +11,7 @@ use crate::http::{
     ApiContext,
     error::AppError,
     extractors::AuthUser,
-    repos::model::{GameModel, UserSafe},
+    repos::model::{GameId, GameModel, UserSafe},
 };
 
 #[axum::debug_handler]
@@ -28,7 +28,7 @@ pub async fn get_all(
 pub async fn get_by_id(
     _: AuthUser,
     ctx: State<ApiContext>,
-    Path(game_id): Path<uuid::Uuid>,
+    Path(game_id): Path<GameId>,
 ) -> Result<Json<GameModel>, AppError> {
     let games_repo = &ctx.game_repo;
     let game = games_repo.get_by_id(game_id).await?;
@@ -39,7 +39,7 @@ pub async fn get_by_id(
 pub async fn get_joined_by_game_id(
     _: AuthUser,
     ctx: State<ApiContext>,
-    Path(game_id): Path<uuid::Uuid>,
+    Path(game_id): Path<GameId>,
 ) -> Result<Json<Vec<UserSafe>>, AppError> {
     let games_repo = &ctx.game_repo;
     let joined_users = games_repo.get_joined_by_game_id(game_id).await?;
@@ -50,7 +50,7 @@ pub async fn get_joined_by_game_id(
 pub async fn join(
     user: AuthUser,
     ctx: State<ApiContext>,
-    Path(game_id): Path<uuid::Uuid>,
+    Path(game_id): Path<GameId>,
 ) -> Result<Json<()>, AppError> {
     let games_repo = &ctx.game_repo;
     games_repo.join(game_id, user.user_id).await?;

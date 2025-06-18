@@ -7,7 +7,7 @@ use crate::http::{
     ApiContext,
     error::AppError,
     extractors::AuthUser,
-    repos::model::{User, UserSafe},
+    repos::model::{User, UserId, UserSafe},
 };
 
 #[derive(Serialize, Deserialize)]
@@ -18,7 +18,7 @@ pub struct LogInData {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LogInConfirmation {
-    pub id: uuid::Uuid,
+    pub id: UserId,
     pub token: String,
 }
 

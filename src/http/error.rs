@@ -35,7 +35,9 @@ impl From<DbError> for AppError {
     fn from(err: DbError) -> Self {
         match err {
             DbError::NotFound(_) => AppError::new(StatusCode::NOT_FOUND, err.to_string()),
-            DbError::Conflict(_) => AppError::new(StatusCode::CONFLICT, err.to_string()),
+            DbError::Conflict(_) | DbError::NoAvailableSlot => {
+                AppError::new(StatusCode::CONFLICT, err.to_string())
+            }
             DbError::ForeignKeyViolation(_) => {
                 AppError::new(StatusCode::BAD_REQUEST, err.to_string())
             }

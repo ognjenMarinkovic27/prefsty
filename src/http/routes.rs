@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    routing::{get, post},
+    routing::{any, get, post},
 };
 
 use crate::http::{ApiContext, controllers};
@@ -22,9 +22,12 @@ pub async fn app(api_context: ApiContext) -> Router {
         .route("/games/{id}/join", post(controllers::game::join))
         .route("/games", post(controllers::game::create));
 
+    let ws_route = Router::new().route("/ws/{game_id}", any(controllers::ws::handler));
+
     Router::new()
         .merge(auth_routes)
         .merge(games_routes)
+        .merge(ws_route)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http().on_failure(())))
         .with_state(api_context)
 }

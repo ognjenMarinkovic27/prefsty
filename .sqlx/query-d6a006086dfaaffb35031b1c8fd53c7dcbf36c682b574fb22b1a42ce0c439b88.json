@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO joined (game_id, idx)\n            SELECT $1, generate_series(0, $2::int - 1)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d6a006086dfaaffb35031b1c8fd53c7dcbf36c682b574fb22b1a42ce0c439b88"
+}

@@ -1,22 +1,22 @@
-use crate::http::{ApiContext, error::AppError};
+use crate::http::{ApiContext, error::AppError, repos::model::UserId};
 use axum::{
     extract::{FromRef, FromRequestParts},
     http::{HeaderValue, StatusCode, header::AUTHORIZATION, request::Parts},
 };
-use axum_login::tower_sessions::cookie::time::{self, OffsetDateTime};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
 use jwt::VerifyWithKey;
 use serde::{Deserialize, Serialize};
 use sha2::Sha384;
+use time::OffsetDateTime;
 
 pub struct AuthUser {
-    pub user_id: uuid::Uuid,
+    pub user_id: UserId,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct AuthUserClaims {
-    id: uuid::Uuid,
+    id: UserId,
     expires_at: i64,
 }
 

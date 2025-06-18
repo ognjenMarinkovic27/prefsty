@@ -11,6 +11,9 @@ pub enum DbError {
     #[error("referenced entity not found")]
     ForeignKeyViolation(sqlx::Error),
 
+    #[error("no available slot")]
+    NoAvailableSlot,
+
     #[error(transparent)]
     Sqlx(sqlx::Error),
 

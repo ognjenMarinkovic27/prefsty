@@ -1,6 +1,6 @@
 use crate::http::repos::{
     error::DbError,
-    model::{GameModel, UserSafe},
+    model::{GameId, GameModel, UserId, UserSafe},
 };
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ impl GameRepo {
         Ok(rec)
     }
 
-    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<GameModel, DbError> {
+    pub async fn get_by_id(&self, id: GameId) -> Result<GameModel, DbError> {
         let rec = sqlx::query_as!(
             GameModel,
             "SELECT id, state as \"state: _\", created_by FROM games WHERE id = $1",
@@ -61,6 +61,8 @@ impl GameRepo {
     }
 
     pub async fn create(&self, game: GameModel) -> anyhow::Result<(), DbError> {
+        const PLAYER_COUNT: i32 = 3;
+        let mut tx = self.pool.begin().await?;
         sqlx::query!(
             r#"
             INSERT INTO games (id, state, created_by)
@@ -70,31 +72,54 @@ impl GameRepo {
             serde_json::to_value(&game.state)?,
             game.created_by
         )
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
 
+        sqlx::query!(
+            r#"
+            INSERT INTO joined (game_id, idx)
+            SELECT $1, generate_series(0, $2::int - 1)
+            "#,
+            game.id,
+            PLAYER_COUNT
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
         Ok(())
     }
 
-    pub async fn join(&self, game_id: uuid::Uuid, user_id: uuid::Uuid) -> Result<(), DbError> {
-        sqlx::query!(
+    pub async fn join(&self, game_id: GameId, user_id: UserId) -> Result<(), DbError> {
+        let opt_idx: Option<i16> = sqlx::query_scalar!(
             r#"
-            INSERT INTO joined (game_id, user_id)
-            VALUES ($1, $2)
+            WITH sel AS (
+                SELECT   idx
+                FROM     joined
+                WHERE    game_id  = $1
+                AND      user_id IS NULL
+                ORDER BY idx
+                LIMIT    1
+            )
+            UPDATE    joined
+            SET       user_id = $2
+            FROM      sel
+            WHERE     joined.game_id = $1
+            AND       joined.idx     = sel.idx
+            RETURNING joined.idx;
             "#,
             game_id,
             user_id
         )
-        .execute(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
+
+        opt_idx.ok_or(DbError::NoAvailableSlot)?;
 
         Ok(())
     }
 
-    pub async fn get_joined_by_game_id(
-        &self,
-        game_id: uuid::Uuid,
-    ) -> Result<Vec<UserSafe>, DbError> {
+    pub async fn get_joined_by_game_id(&self, game_id: GameId) -> Result<Vec<UserSafe>, DbError> {
         let rec = sqlx::query_as!(
             UserSafe,
             "SELECT users.id, users.username
