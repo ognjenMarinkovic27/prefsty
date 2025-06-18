@@ -1,36 +1,41 @@
-use prefsty::{
-    core::{
-        actions::{GameAction, GameActionKind},
-        game::new_game,
-    },
-    persistence::{PgDB, model::GameModel},
-};
-use sqlx::PgPool;
-use uuid::Uuid;
+use axum;
+use sqlx::postgres::PgPoolOptions;
+use tokio::net::TcpListener;
+mod http;
+
+use http::ApiConfig;
+
+use crate::http::repos::{game::GameRepo, user::UserRepo};
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let db_url = env::var("DATABASE_URL").expect("Provide a DATABASE_URL to run prefsty");
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
-    let pool = PgPool::connect(&db_url).await?;
-    let db = PgDB::new(pool);
+    let listener = TcpListener::bind("localhost:8080")
+        .await
+        .expect("Unable to connect to the server");
 
-    let uuid = Uuid::new_v4();
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect("postgres://postgres:postgres@localhost/pref")
+        .await?;
 
-    let game_model = GameModel {
-        id: uuid,
-        state: new_game(0, 120, 2),
+    let context = http::ApiContext {
+        config: ApiConfig {
+            hmac_key: "bigsecretwhooo".into(),
+        },
+        game_repo: Arc::new(GameRepo::new(pool.clone())),
+        user_repo: Arc::new(UserRepo::new(pool.clone())),
     };
+    let app = http::routes::app(context).await;
 
-    db.create_game(game_model).await.unwrap();
-
-    let game_model = db.load_game(uuid).await.unwrap();
-    let game = game_model.state;
-    game.apply(GameAction {
-        player: 0,
-        kind: GameActionKind::Bid,
-    })
-    .expect("should be able to bid");
+    println!("Listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app)
+        .await
+        .expect("Error serving application");
 
     Ok(())
 }

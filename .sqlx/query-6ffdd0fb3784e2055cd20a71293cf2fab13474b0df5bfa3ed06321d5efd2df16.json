@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, state as \"state: _\" FROM games WHERE id = $1",
+  "query": "SELECT users.id, users.username\n            FROM users\n            JOIN joined ON users.id = joined.user_id\n            WHERE joined.game_id = $1",
   "describe": {
     "columns": [
       {
@@ -10,8 +10,8 @@
       },
       {
         "ordinal": 1,
-        "name": "state: _",
-        "type_info": "Jsonb"
+        "name": "username",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "cf94f30c24d1087903cd49dd2039c2df4266d1229ccdd92dbe73d53fd0e5b492"
+  "hash": "6ffdd0fb3784e2055cd20a71293cf2fab13474b0df5bfa3ed06321d5efd2df16"
 }
