@@ -1,6 +1,6 @@
 use crate::http::repos::{
     error::DbError,
-    model::{GameId, GameModel, UserId, UserSafe},
+    model::{Game, GameId, UserId, UserSafe, UserSafeIdx},
 };
 
 #[derive(Debug)]
@@ -13,9 +13,9 @@ impl GameRepo {
         Self { pool }
     }
 
-    pub async fn get_all(&self) -> Result<Vec<GameModel>, DbError> {
+    pub async fn get_all(&self) -> Result<Vec<Game>, DbError> {
         let rec = sqlx::query_as!(
-            GameModel,
+            Game,
             "SELECT id, state as \"state: _\", created_by FROM games",
         )
         .fetch_all(&self.pool)
@@ -28,9 +28,9 @@ impl GameRepo {
         Ok(rec)
     }
 
-    pub async fn get_by_id(&self, id: GameId) -> Result<GameModel, DbError> {
+    pub async fn get_by_id(&self, id: GameId) -> Result<Game, DbError> {
         let rec = sqlx::query_as!(
-            GameModel,
+            Game,
             "SELECT id, state as \"state: _\", created_by FROM games WHERE id = $1",
             id
         )
@@ -44,7 +44,7 @@ impl GameRepo {
         Ok(rec)
     }
 
-    pub async fn update(&self, game: GameModel) -> anyhow::Result<(), DbError> {
+    pub async fn update(&self, game: &Game) -> anyhow::Result<(), DbError> {
         sqlx::query!(
             r#"
             UPDATE games
@@ -60,7 +60,7 @@ impl GameRepo {
         Ok(())
     }
 
-    pub async fn create(&self, game: GameModel) -> anyhow::Result<(), DbError> {
+    pub async fn create(&self, game: Game) -> anyhow::Result<(), DbError> {
         const PLAYER_COUNT: i32 = 3;
         let mut tx = self.pool.begin().await?;
         sqlx::query!(
@@ -119,10 +119,13 @@ impl GameRepo {
         Ok(())
     }
 
-    pub async fn get_joined_by_game_id(&self, game_id: GameId) -> Result<Vec<UserSafe>, DbError> {
+    pub async fn get_joined_by_game_id(
+        &self,
+        game_id: GameId,
+    ) -> Result<Vec<UserSafeIdx>, DbError> {
         let rec = sqlx::query_as!(
-            UserSafe,
-            "SELECT users.id, users.username
+            UserSafeIdx,
+            "SELECT users.id, users.username, joined.idx
             FROM users
             JOIN joined ON users.id = joined.user_id
             WHERE joined.game_id = $1",

@@ -1,4 +1,5 @@
 use super::types::{Card, GameContract};
+use serde::{Deserialize, Serialize};
 
 pub struct GameAction {
     pub player: usize,
@@ -11,6 +12,7 @@ impl GameAction {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum GameActionKind {
     Bid,
     PassBid,
@@ -26,6 +28,7 @@ pub enum GameActionKind {
     PlayCard(Card),
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct CardChoice {
     pub take_cards: Vec<Card>,
     pub discard_cards: Vec<Card>,

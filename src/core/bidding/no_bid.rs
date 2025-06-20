@@ -26,22 +26,30 @@ impl NoBidClaimState {
 }
 
 impl Game<NoBidClaimState> {
-    pub fn validate(&self, action: &GameAction) -> bool {
-        match action.kind {
-            GameActionKind::ClaimNoBid => {
-                self.state.player_states[action.player] == PlayerBidState::NoBid
-            }
-            GameActionKind::PassBid => true,
-            _ => false,
-        }
-    }
-
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        debug_assert!(self.turn == action.player, "Should be validated beforehand",);
+        self.validate(&action)?;
+
+        debug_assert!(self.turn == action.player, "Should be validated beforehand");
 
         match action.kind {
             GameActionKind::ClaimNoBid => Ok(self.claim_no_bid()),
             GameActionKind::PassBid => Ok(self.pass_bid()),
+            _ => Err(GameError::InvalidAction),
+        }
+    }
+
+    fn validate(&self, action: &GameAction) -> Result<(), GameError> {
+        self.validate_turn(action)?;
+
+        match action.kind {
+            GameActionKind::ClaimNoBid => {
+                if self.state.player_states[action.player] == PlayerBidState::NoBid {
+                    Ok(())
+                } else {
+                    Err(GameError::BadAction)
+                }
+            }
+            GameActionKind::PassBid => Ok(()),
             _ => Err(GameError::InvalidAction),
         }
     }

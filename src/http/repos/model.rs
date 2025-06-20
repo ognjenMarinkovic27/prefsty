@@ -5,7 +5,7 @@ pub type UserId = uuid::Uuid;
 pub type GameId = uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GameModel {
+pub struct Game {
     pub id: GameId,
     pub state: GameState,
     pub created_by: UserId,
@@ -23,4 +23,11 @@ pub struct User {
 pub struct UserSafe {
     pub id: UserId,
     pub username: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserSafeIdx {
+    pub id: UserId,
+    pub username: String,
+    pub idx: i16,
 }

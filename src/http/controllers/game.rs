@@ -11,14 +11,11 @@ use crate::http::{
     ApiContext,
     error::AppError,
     extractors::AuthUser,
-    repos::model::{GameId, GameModel, UserSafe},
+    repos::model::{Game, GameId, UserSafe, UserSafeIdx},
 };
 
 #[axum::debug_handler]
-pub async fn get_all(
-    _: AuthUser,
-    ctx: State<ApiContext>,
-) -> Result<Json<Vec<GameModel>>, AppError> {
+pub async fn get_all(_: AuthUser, ctx: State<ApiContext>) -> Result<Json<Vec<Game>>, AppError> {
     let games_repo = &ctx.game_repo;
     let games = games_repo.get_all().await?;
 
@@ -29,7 +26,7 @@ pub async fn get_by_id(
     _: AuthUser,
     ctx: State<ApiContext>,
     Path(game_id): Path<GameId>,
-) -> Result<Json<GameModel>, AppError> {
+) -> Result<Json<Game>, AppError> {
     let games_repo = &ctx.game_repo;
     let game = games_repo.get_by_id(game_id).await?;
 
@@ -40,7 +37,7 @@ pub async fn get_joined_by_game_id(
     _: AuthUser,
     ctx: State<ApiContext>,
     Path(game_id): Path<GameId>,
-) -> Result<Json<Vec<UserSafe>>, AppError> {
+) -> Result<Json<Vec<UserSafeIdx>>, AppError> {
     let games_repo = &ctx.game_repo;
     let joined_users = games_repo.get_joined_by_game_id(game_id).await?;
 
@@ -75,7 +72,7 @@ pub async fn create(
 
     let games_repo = &ctx.game_repo;
     games_repo
-        .create(GameModel {
+        .create(Game {
             id: Uuid::new_v4(),
             state: new_game,
             created_by: user.user_id,

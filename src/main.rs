@@ -1,4 +1,5 @@
 use axum;
+use dashmap::DashMap;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 mod http;
@@ -29,6 +30,7 @@ async fn main() -> Result<(), sqlx::Error> {
         },
         game_repo: Arc::new(GameRepo::new(pool.clone())),
         user_repo: Arc::new(UserRepo::new(pool.clone())),
+        clients: Arc::new(DashMap::new()),
     };
     let app = http::routes::app(context).await;
 

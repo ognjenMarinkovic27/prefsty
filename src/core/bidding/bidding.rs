@@ -49,9 +49,9 @@ impl Game<BiddingState> {
     }
 
     pub fn apply(self, action: GameAction) -> Result<GameState, GameError> {
-        debug_assert!(self.turn == action.player, "Should be validated beforehand");
-
         self.validate(&action)?;
+
+        debug_assert!(self.turn == action.player, "Should be validated beforehand");
 
         match action.kind {
             GameActionKind::Bid => Ok(self.bid()),

@@ -276,10 +276,15 @@ impl GameState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum GameError {
+    #[error("invalid action")]
     InvalidAction,
+
+    #[error("bad action")]
     BadAction,
+
+    #[error("invalid turn")]
     InvalidTurn,
 }
 

@@ -3,7 +3,7 @@ use axum::{
     routing::{any, get, post},
 };
 
-use crate::http::{ApiContext, controllers};
+use crate::http::{ApiContext, controllers, ws};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
@@ -22,7 +22,7 @@ pub async fn app(api_context: ApiContext) -> Router {
         .route("/games/{id}/join", post(controllers::game::join))
         .route("/games", post(controllers::game::create));
 
-    let ws_route = Router::new().route("/ws/{game_id}", any(controllers::ws::handler));
+    let ws_route = Router::new().route("/ws/{game_id}", any(ws::handler));
 
     Router::new()
         .merge(auth_routes)
